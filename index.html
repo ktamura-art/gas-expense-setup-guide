@@ -288,6 +288,15 @@
   nav.toc .t{font-weight:700;font-size:14.5px}
   nav.toc .c{font-family:var(--f-mono);font-size:10.5px;color:var(--muted);white-space:nowrap}
 
+  figure.fig{margin:24px 0 0;padding:0}
+  .figbox{overflow-x:auto;border:1px solid var(--rule);background:var(--surface)}
+  figure.fig svg{display:block;width:100%;min-width:680px;height:auto;padding:16px 12px}
+  figure.fig figcaption{
+    margin-top:11px;font-size:13.5px;color:var(--ink-2);line-height:1.8;
+    border-left:3px solid var(--accent);padding-left:13px;
+  }
+  figure.fig figcaption strong{color:var(--ink)}
+
   footer.end{
     margin-top:60px;padding-top:18px;border-top:1px solid var(--rule-strong);
     font-family:var(--f-mono);font-size:11px;color:var(--muted);
@@ -328,6 +337,7 @@
 <nav class="toc" aria-label="手順の全体">
   <h2>全体の流れ</h2>
   <ol>
+    <li><a href="#ov"><span class="n">全体像</span><span class="t">どこからどこが、何の処理か</span><span class="c">図2点</span></a></li>
     <li><a href="#p0"><span class="n">準備</span><span class="t">フォルダとスプレッドシートを作る</span><span class="c">15分</span></a></li>
     <li><a href="#p1"><span class="n">STEP 1</span><span class="t">Apps Scriptプロジェクトを作る</span><span class="c">5分</span></a></li>
     <li><a href="#p2"><span class="n">STEP 2</span><span class="t">マニフェストを差し替える</span><span class="c">5分</span></a></li>
@@ -341,6 +351,178 @@
     <li><a href="#ref"><span class="n">付録</span><span class="t">一覧表とトラブル対応</span><span class="c">―</span></a></li>
   </ol>
 </nav>
+
+
+<!-- ============ 全体像 ============ -->
+<section class="phase" id="ov">
+  <div class="phase-head"><span class="phase-num">全体像</span><h2>どこからどこが、何の処理か</h2></div>
+  <p class="phase-note">
+    セットアップを始める前に、<strong>組み上がったあとに何が起きるか</strong>を見ておいてください。
+    どのファイルがどの範囲を担当しているかが分かると、うまく動かないときの切り分けが早くなります。
+  </p>
+
+  <figure class="fig">
+    <div class="figbox"><svg viewBox="0 0 780 700" role="img" preserveAspectRatio="xMidYMid meet"
+         aria-label="領収書PDF1件が、OCR、発行元と利用日と金額の判定、カレンダー突合、区間の抽出と正規化、運賃の引き当て、費用区分の判定とリネームを経て、処理ログ・処理済みフォルダ・マネーフォワードの3つに出力されるまでの流れ。区間の正規化は表記辞書シート、運賃は区間マスタシートを参照する。">
+      <defs>
+        <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+        </marker>
+        <marker id="ara" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/>
+        </marker>
+      </defs>
+
+      <!-- 入口 -->
+      <rect x="190" y="14" width="280" height="46" rx="3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="5 4"/>
+      <text x="330" y="35" text-anchor="middle" font-size="13" font-weight="700" fill="currentColor">領収書PDF（保管フォルダー）</text>
+      <text x="330" y="51" text-anchor="middle" font-size="10.5" fill="currentColor" opacity=".7">Flowsが自動で入れる ／ 手で入れる</text>
+      <line x1="330" y1="60" x2="330" y2="86" stroke="currentColor" stroke-width="1.6" marker-end="url(#ar)"/>
+
+      <!-- ① -->
+      <circle cx="158" cy="117" r="13" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      <text x="158" y="122" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">1</text>
+      <rect x="190" y="90" width="280" height="54" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <text x="206" y="112" font-size="13" font-weight="700" fill="currentColor">PDFをテキストにする</text>
+      <text x="206" y="130" font-size="10.5" fill="currentColor" opacity=".7">Drive APIでOCR。ここでマニフェストが要る</text>
+      <line x1="330" y1="144" x2="330" y2="162" stroke="currentColor" stroke-width="1.6" marker-end="url(#ar)"/>
+
+      <!-- ② -->
+      <circle cx="158" cy="193" r="13" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      <text x="158" y="198" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">2</text>
+      <rect x="190" y="166" width="280" height="54" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <text x="206" y="188" font-size="13" font-weight="700" fill="currentColor">発行元・利用日・金額を判定</text>
+      <text x="206" y="206" font-size="10.5" fill="currentColor" opacity=".7">利用日は発行日ではなく搭乗日・乗車日</text>
+      <line x1="330" y1="220" x2="330" y2="238" stroke="currentColor" stroke-width="1.6" marker-end="url(#ar)"/>
+
+      <!-- ③ -->
+      <circle cx="158" cy="269" r="13" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      <text x="158" y="274" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">3</text>
+      <rect x="190" y="242" width="280" height="54" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <text x="206" y="264" font-size="13" font-weight="700" fill="currentColor">カレンダーと突合して摘要を作る</text>
+      <text x="206" y="282" font-size="10.5" fill="currentColor" opacity=".7">利用日の予定を探す。複数あれば「要確認」</text>
+      <line x1="330" y1="296" x2="330" y2="314" stroke="currentColor" stroke-width="1.6" marker-end="url(#ar)"/>
+
+      <!-- ④ ＋ 辞書参照 -->
+      <circle cx="158" cy="345" r="13" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      <text x="158" y="350" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">4</text>
+      <rect x="190" y="318" width="280" height="54" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <text x="206" y="340" font-size="13" font-weight="700" fill="currentColor">区間を取り出し、表記を統一する</text>
+      <text x="206" y="358" font-size="10.5" fill="currentColor" opacity=".7">東京駅→大分空港 を 東京→大分 に揃える</text>
+      <line x1="470" y1="345" x2="512" y2="345" stroke="var(--accent)" stroke-width="1.6" marker-start="url(#ara)" marker-end="url(#ara)"/>
+      <rect x="516" y="322" width="240" height="46" rx="3" fill="none" stroke="var(--accent)" stroke-width="1.6"/>
+      <text x="530" y="341" font-size="12" font-weight="700" fill="var(--accent)">表記辞書 シート</text>
+      <text x="530" y="357" font-size="10.5" fill="var(--accent)" opacity=".85">表記ゆれ辞書.gs が読む</text>
+      <line x1="330" y1="372" x2="330" y2="390" stroke="currentColor" stroke-width="1.6" marker-end="url(#ar)"/>
+
+      <!-- ⑤ ＋ 区間マスタ参照 -->
+      <circle cx="158" cy="421" r="13" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      <text x="158" y="426" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">5</text>
+      <rect x="190" y="394" width="280" height="54" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <text x="206" y="416" font-size="13" font-weight="700" fill="currentColor">運賃を引き当てる</text>
+      <text x="206" y="434" font-size="10.5" fill="currentColor" opacity=".7">2回目以降はここが効く（前回の料金を参照）</text>
+      <line x1="470" y1="421" x2="512" y2="421" stroke="var(--accent)" stroke-width="1.6" marker-start="url(#ara)" marker-end="url(#ara)"/>
+      <rect x="516" y="398" width="240" height="46" rx="3" fill="none" stroke="var(--accent)" stroke-width="1.6"/>
+      <text x="530" y="417" font-size="12" font-weight="700" fill="var(--accent)">区間マスタ シート</text>
+      <text x="530" y="433" font-size="10.5" fill="var(--accent)" opacity=".85">無ければ空欄のまま進む</text>
+      <line x1="330" y1="448" x2="330" y2="466" stroke="currentColor" stroke-width="1.6" marker-end="url(#ar)"/>
+
+      <!-- ⑥ -->
+      <circle cx="158" cy="497" r="13" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      <text x="158" y="502" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">6</text>
+      <rect x="190" y="470" width="280" height="54" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <text x="206" y="492" font-size="13" font-weight="700" fill="currentColor">費用区分を決めてリネーム</text>
+      <text x="206" y="510" font-size="10.5" fill="currentColor" opacity=".7">20251127_JAL_34120_交通費.pdf</text>
+      <line x1="330" y1="524" x2="330" y2="542" stroke="currentColor" stroke-width="1.6" marker-end="url(#ar)"/>
+
+      <!-- ⑦ -->
+      <circle cx="158" cy="573" r="13" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      <text x="158" y="578" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">7</text>
+      <rect x="190" y="546" width="280" height="54" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <text x="206" y="568" font-size="13" font-weight="700" fill="currentColor">3か所へ出力する</text>
+      <text x="206" y="586" font-size="10.5" fill="currentColor" opacity=".7">記録・退避・連携をまとめて行う</text>
+
+      <!-- 出力3つ -->
+      <line x1="270" y1="600" x2="120" y2="632" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar)"/>
+      <line x1="330" y1="600" x2="330" y2="632" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar)"/>
+      <line x1="390" y1="600" x2="540" y2="632" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar)"/>
+      <rect x="20" y="636" width="200" height="46" rx="3" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      <text x="120" y="655" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">処理ログ シート</text>
+      <text x="120" y="671" text-anchor="middle" font-size="10.5" fill="currentColor" opacity=".7">13列で1行</text>
+      <rect x="240" y="636" width="180" height="46" rx="3" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      <text x="330" y="655" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">02_処理済み</text>
+      <text x="330" y="671" text-anchor="middle" font-size="10.5" fill="currentColor" opacity=".7">年月フォルダへ移動</text>
+      <rect x="440" y="636" width="200" height="46" rx="3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="5 4"/>
+      <text x="540" y="655" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">マネーフォワード</text>
+      <text x="540" y="671" text-anchor="middle" font-size="10.5" fill="currentColor" opacity=".7">ENABLE_MF が true のときだけ</text>
+    </svg></div>
+    <figcaption>
+      <strong>図1：領収書1件がたどる7つの処理。</strong>
+      ①〜⑦の縦の流れはすべて<strong>「メイン」ファイル</strong>が担当します。
+      オレンジの2つ（表記辞書・区間マスタ）は<strong>途中で参照して戻ってくる</strong>もので、
+      無くても処理は止まりません（その場合、区間は揃わず運賃は空欄になります）。
+    </figcaption>
+  </figure>
+
+  <figure class="fig">
+    <div class="figbox"><svg viewBox="0 0 780 380" role="img" preserveAspectRatio="xMidYMid meet"
+         aria-label="締め処理のrunClosingBatch関数は、内側でまずmain関数を呼んで図1の処理を全件行い、続いてカレンダーから出張予定を集め、領収書と突合して未提出を検出し、レポート追記とメール通知を行う入れ子構造。">
+      <defs>
+        <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+        </marker>
+      </defs>
+
+      <text x="20" y="26" font-size="13" font-weight="700" fill="var(--accent)">締め処理 ─ runClosingBatch()</text>
+      <text x="760" y="26" text-anchor="end" font-size="11" fill="var(--accent)" opacity=".9">毎月21日 1時台 ／ 翌月1日 8時台 ／ 翌月8日 8時台</text>
+
+      <rect x="20" y="40" width="740" height="316" rx="6" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-dasharray="7 5"/>
+
+      <rect x="46" y="66" width="688" height="62" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+      <text x="64" y="90" font-size="13" font-weight="700" fill="currentColor">① main() を呼ぶ ＝ 図1の①〜⑦を、フォルダ内の全件ぶん</text>
+      <text x="64" y="110" font-size="11" fill="currentColor" opacity=".75">ここまでは「メイン」ファイルの担当。締め処理は結果を受け取るだけ</text>
+      <line x1="390" y1="128" x2="390" y2="150" stroke="currentColor" stroke-width="1.6" marker-end="url(#ar2)"/>
+
+      <rect x="46" y="154" width="688" height="48" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <text x="64" y="174" font-size="13" font-weight="700" fill="currentColor">② 対象の締め区間を決め、カレンダーから出張予定を集める</text>
+      <text x="64" y="192" font-size="11" fill="currentColor" opacity=".75">実行日から自動判定（21日以降なら当月20日締め、それ以前なら前月20日締め）</text>
+      <line x1="390" y1="202" x2="390" y2="224" stroke="currentColor" stroke-width="1.6" marker-end="url(#ar2)"/>
+
+      <rect x="46" y="228" width="688" height="48" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <text x="64" y="248" font-size="13" font-weight="700" fill="currentColor">③ 予定と領収書を突き合わせ、領収書が無い出張を洗い出す</text>
+      <text x="64" y="266" font-size="11" fill="currentColor" opacity=".75">利用日をキーに照合。処理ログを「見出し名」で読むので列を足しても動く</text>
+      <line x1="390" y1="276" x2="390" y2="298" stroke="currentColor" stroke-width="1.6" marker-end="url(#ar2)"/>
+
+      <rect x="46" y="302" width="688" height="44" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <text x="64" y="322" font-size="13" font-weight="700" fill="currentColor">④ 締め処理レポートに1行追記し、未提出があればメールで通知</text>
+      <text x="64" y="339" font-size="11" fill="currentColor" opacity=".75">通知先は CONFIG.NOTIFY_EMAIL</text>
+    </svg></div>
+    <figcaption>
+      <strong>図2：月3回の自動実行は、図1をまるごと内側に含みます。</strong>
+      <code class="inl">runClosingBatch</code> は<strong>①で main() を呼んでから</strong>、②〜④の照合を行います。
+      つまり<strong>手動で main() を動かすのと、自動実行の前半は同じ処理</strong>です。
+      切り分けるときは、まず main() だけを単体で動かしてください。
+    </figcaption>
+  </figure>
+
+  <h3 style="font-size:15px;margin:30px 0 0">セットアップの各STEPが、どの処理を用意しているか</h3>
+  <div class="scroller">
+    <table>
+      <thead><tr><th>STEP</th><th>用意するもの</th><th>効いてくる場所</th></tr></thead>
+      <tbody>
+        <tr><td class="m">準備</td><td>フォルダ・スプレッドシート</td><td>図1の入口と、⑦の出力先すべて</td></tr>
+        <tr><td class="m">STEP 2</td><td>マニフェスト（Drive API）</td><td><strong>図1の①</strong>。ここが無いと1手目で止まります</td></tr>
+        <tr><td class="m">STEP 3</td><td>5ファイルの貼り付け</td><td>図1の全体と、図2の外枠</td></tr>
+        <tr><td class="m">STEP 4</td><td>CONFIG（ID・通知先）</td><td>図1の入口・⑦、図2の④の宛先</td></tr>
+        <tr><td class="m">STEP 5</td><td>― （動作確認のみ）</td><td>図2の②の日付計算、図1の④の辞書</td></tr>
+        <tr><td class="m">STEP 6</td><td>― （動作確認のみ）</td><td><strong>図1の①〜⑦</strong>を1件で通す</td></tr>
+        <tr><td class="m">STEP 7</td><td>表記辞書の中身</td><td>図1の④の精度。育てるほど揃います</td></tr>
+        <tr><td class="m">STEP 8</td><td>トリガー3本</td><td><strong>図2の外枠</strong>。ここで自動運転になります</td></tr>
+        <tr><td class="m">任意</td><td>MFのトークン</td><td>図1の⑦のうち、マネーフォワードへの1本</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
 
 
 <!-- ============ 準備 ============ -->
