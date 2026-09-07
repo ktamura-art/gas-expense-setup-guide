@@ -1,0 +1,1057 @@
+<title>経費自動化 セットアップ手順</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap">
+
+<style>
+  :root{
+    --paper:#F5F6F9;
+    --surface:#FFFFFF;
+    --surface-2:#EEF0F5;
+    --ink:#16203A;
+    --ink-2:#3E4A63;
+    --muted:#6B7688;
+    --rule:#DCE0E8;
+    --rule-strong:#BFC5D1;
+    --navy:#1F3864;
+    --accent:#B8511A;
+    --accent-soft:#FAEDE3;
+    --ok:#2C6E49;
+    --ok-soft:#E4F0E9;
+    --warn:#96660C;
+    --warn-soft:#F8EFDC;
+    --crit:#A33328;
+    --crit-soft:#F8E6E3;
+    --code-bg:#1B2337;
+    --code-fg:#E7ECF5;
+
+    --f-sans:"BIZ UDPGothic","Hiragino Kaku Gothic ProN","メイリオ",Meiryo,system-ui,sans-serif;
+    --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#10141F;
+      --surface:#171D2C;
+      --surface-2:#1E2536;
+      --ink:#E8ECF4;
+      --ink-2:#C3CAD8;
+      --muted:#8E98AC;
+      --rule:#2A3245;
+      --rule-strong:#3B455C;
+      --navy:#9FB6DA;
+      --accent:#E58B4E;
+      --accent-soft:#31210F;
+      --ok:#63B187;
+      --ok-soft:#12291D;
+      --warn:#D3A44C;
+      --warn-soft:#2F2610;
+      --crit:#E0796C;
+      --crit-soft:#331A17;
+      --code-bg:#0C111C;
+      --code-fg:#DCE3EF;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#10141F;
+    --surface:#171D2C;
+    --surface-2:#1E2536;
+    --ink:#E8ECF4;
+    --ink-2:#C3CAD8;
+    --muted:#8E98AC;
+    --rule:#2A3245;
+    --rule-strong:#3B455C;
+    --navy:#9FB6DA;
+    --accent:#E58B4E;
+    --accent-soft:#31210F;
+    --ok:#63B187;
+    --ok-soft:#12291D;
+    --warn:#D3A44C;
+    --warn-soft:#2F2610;
+    --crit:#E0796C;
+    --crit-soft:#331A17;
+    --code-bg:#0C111C;
+    --code-fg:#DCE3EF;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:var(--f-sans);font-size:15px;line-height:1.8;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:0 20px 120px}
+
+  /* ---------- header ---------- */
+  header.top{
+    padding:36px 0 0;
+  }
+  .eyebrow{
+    font-family:var(--f-mono);font-size:11px;font-weight:600;
+    letter-spacing:.16em;text-transform:uppercase;color:var(--accent);
+  }
+  h1{
+    font-size:clamp(25px,4.4vw,36px);font-weight:700;margin:8px 0 10px;
+    letter-spacing:.01em;line-height:1.35;text-wrap:balance;
+  }
+  .sub{color:var(--ink-2);max-width:60ch;margin:0}
+  .meta{
+    font-family:var(--f-mono);font-size:11.5px;color:var(--muted);
+    margin-top:14px;letter-spacing:.03em;
+  }
+
+  /* ---------- progress ---------- */
+  .progress{
+    position:sticky;top:0;z-index:20;
+    background:var(--paper);
+    border-bottom:1px solid var(--rule);
+    margin:26px -20px 0;padding:11px 20px;
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  }
+  .bar{
+    flex:1 1 200px;height:6px;background:var(--surface-2);
+    border-radius:99px;overflow:hidden;min-width:160px;
+  }
+  .bar>i{
+    display:block;height:100%;width:0%;background:var(--accent);
+    transition:width .25s ease;
+  }
+  .ptext{font-family:var(--f-mono);font-size:12px;color:var(--ink-2);
+    font-variant-numeric:tabular-nums;white-space:nowrap}
+  .reset{
+    font-family:var(--f-mono);font-size:11px;color:var(--muted);
+    background:none;border:1px solid var(--rule-strong);border-radius:3px;
+    padding:3px 9px;cursor:pointer;
+  }
+  .reset:hover{color:var(--accent);border-color:var(--accent)}
+  .reset:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  /* ---------- prep box ---------- */
+  .prep{
+    margin-top:30px;border:1px solid var(--rule);background:var(--surface);
+    border-top:3px solid var(--navy);padding:20px 22px;
+  }
+  .prep h2{font-size:16px;margin:0 0 4px;font-weight:700}
+  .prep p{margin:6px 0 12px;color:var(--ink-2);font-size:14px}
+
+  /* ---------- phase ---------- */
+  .phase{margin-top:52px;scroll-margin-top:64px}
+  .phase-head{
+    display:flex;align-items:baseline;gap:14px;
+    border-bottom:2px solid var(--ink);padding-bottom:9px;
+  }
+  .phase-num{
+    font-family:var(--f-mono);font-size:12px;font-weight:600;
+    color:var(--surface);background:var(--ink);
+    padding:3px 9px;border-radius:2px;letter-spacing:.06em;flex:none;
+  }
+  .phase-head h2{font-size:clamp(18px,2.6vw,21px);margin:0;font-weight:700;text-wrap:balance}
+  .phase-note{margin:14px 0 0;color:var(--ink-2);font-size:14.5px;max-width:64ch}
+
+  /* ---------- step ---------- */
+  .step{
+    margin-top:18px;background:var(--surface);
+    border:1px solid var(--rule);
+    display:grid;grid-template-columns:auto 1fr;
+  }
+  .step.done{border-color:var(--ok);background:var(--ok-soft)}
+  .tick{
+    padding:16px 0 0 16px;
+  }
+  .tick input{
+    width:19px;height:19px;cursor:pointer;accent-color:var(--accent);margin:0;
+  }
+  .tick input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .body{padding:14px 18px 18px 14px;min-width:0}
+  .step h3{
+    font-size:15.5px;margin:0 0 2px;font-weight:700;line-height:1.6;
+  }
+  .step h3 .n{
+    font-family:var(--f-mono);font-size:12px;color:var(--accent);
+    margin-right:8px;font-weight:600;
+  }
+  .step p{margin:8px 0;font-size:14.5px;color:var(--ink-2)}
+  .step p.lead{color:var(--ink)}
+  .step ol,.step ul{margin:8px 0;padding-left:22px;font-size:14.5px;color:var(--ink-2)}
+  .step li{margin:5px 0}
+
+  /* ---------- ui path ---------- */
+  .path{
+    display:flex;flex-wrap:wrap;align-items:center;gap:6px;
+    margin:10px 0;font-size:13.5px;
+  }
+  .path b{
+    background:var(--surface-2);border:1px solid var(--rule);
+    padding:3px 9px;border-radius:3px;font-weight:700;color:var(--ink);
+  }
+  .path i{color:var(--muted);font-style:normal;font-family:var(--f-mono);font-size:12px}
+
+  /* ---------- copy value ---------- */
+  .val{
+    display:flex;align-items:stretch;margin:9px 0;
+    border:1px solid var(--rule-strong);background:var(--surface-2);
+    overflow:hidden;
+  }
+  .val code{
+    flex:1;font-family:var(--f-mono);font-size:12.5px;
+    padding:8px 11px;overflow-x:auto;white-space:pre;color:var(--ink);
+  }
+  .val button{
+    flex:none;border:none;border-left:1px solid var(--rule-strong);
+    background:var(--surface);color:var(--muted);cursor:pointer;
+    font-family:var(--f-mono);font-size:11px;padding:0 12px;letter-spacing:.05em;
+  }
+  .val button:hover{color:var(--accent)}
+  .val button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+  .val button.copied{color:var(--ok);font-weight:600}
+
+  /* ---------- expected output ---------- */
+  .expect{
+    margin:12px 0 0;border-left:3px solid var(--ok);
+    background:var(--ok-soft);padding:11px 15px;
+  }
+  .expect .lbl{
+    font-family:var(--f-mono);font-size:10.5px;font-weight:600;
+    letter-spacing:.12em;text-transform:uppercase;color:var(--ok);
+    display:block;margin-bottom:6px;
+  }
+  .expect pre{
+    margin:0;font-family:var(--f-mono);font-size:12px;line-height:1.75;
+    overflow-x:auto;color:var(--ink);
+  }
+  .expect p{margin:4px 0 0;font-size:13.5px;color:var(--ink-2)}
+
+  /* ---------- warn / trouble ---------- */
+  .note{
+    margin:12px 0 0;padding:11px 15px;font-size:13.5px;
+    border-left:3px solid var(--warn);background:var(--warn-soft);color:var(--ink);
+  }
+  .note.crit{border-left-color:var(--crit);background:var(--crit-soft)}
+  .note .lbl{
+    font-family:var(--f-mono);font-size:10.5px;font-weight:600;
+    letter-spacing:.12em;text-transform:uppercase;color:var(--warn);
+    display:block;margin-bottom:5px;
+  }
+  .note.crit .lbl{color:var(--crit)}
+  .note p{margin:5px 0;color:var(--ink-2);font-size:13.5px}
+  .note ol{margin:6px 0;padding-left:20px}
+
+  /* ---------- code block ---------- */
+  pre.code{
+    margin:10px 0;background:var(--code-bg);color:var(--code-fg);
+    padding:13px 15px;overflow-x:auto;
+    font-family:var(--f-mono);font-size:12.5px;line-height:1.7;
+    border-radius:3px;
+  }
+  code.inl{
+    font-family:var(--f-mono);font-size:12.5px;
+    background:var(--surface-2);padding:1px 6px;border-radius:2px;
+    border:1px solid var(--rule);
+  }
+
+  /* ---------- table ---------- */
+  .scroller{overflow-x:auto;border:1px solid var(--rule);background:var(--surface);margin:12px 0}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:520px}
+  th{
+    font-family:var(--f-mono);font-size:10.5px;font-weight:600;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--muted);text-align:left;
+    padding:9px 14px;border-bottom:1.5px solid var(--rule-strong);white-space:nowrap;
+  }
+  td{padding:10px 14px;border-bottom:1px solid var(--rule);vertical-align:top}
+  tbody tr:last-child td{border-bottom:none}
+  td.k{font-weight:700;white-space:nowrap}
+  td.m{font-family:var(--f-mono);font-size:12px;white-space:nowrap}
+
+  .pill{
+    display:inline-block;font-family:var(--f-mono);font-size:10.5px;font-weight:600;
+    padding:2px 8px;border-radius:2px;white-space:nowrap;
+  }
+  .pill.req{background:var(--crit-soft);color:var(--crit)}
+  .pill.opt{background:var(--surface-2);color:var(--muted)}
+  .pill.rec{background:var(--accent-soft);color:var(--accent)}
+
+  /* ---------- toc ---------- */
+  nav.toc{margin-top:28px;border:1px solid var(--rule);background:var(--surface)}
+  nav.toc h2{
+    font-family:var(--f-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--muted);margin:0;padding:11px 18px;border-bottom:1px solid var(--rule);font-weight:600;
+  }
+  nav.toc ol{list-style:none;margin:0;padding:0}
+  nav.toc li{border-bottom:1px solid var(--rule)}
+  nav.toc li:last-child{border-bottom:none}
+  nav.toc a{
+    display:grid;grid-template-columns:64px 1fr auto;gap:12px;align-items:baseline;
+    padding:10px 18px;text-decoration:none;color:var(--ink);
+  }
+  nav.toc a:hover{background:var(--surface-2)}
+  nav.toc a:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+  nav.toc .n{font-family:var(--f-mono);font-size:11.5px;color:var(--accent);font-weight:600}
+  nav.toc .t{font-weight:700;font-size:14.5px}
+  nav.toc .c{font-family:var(--f-mono);font-size:10.5px;color:var(--muted);white-space:nowrap}
+
+  footer.end{
+    margin-top:60px;padding-top:18px;border-top:1px solid var(--rule-strong);
+    font-family:var(--f-mono);font-size:11px;color:var(--muted);
+    display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;letter-spacing:.04em;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none !important;transition:none !important;scroll-behavior:auto !important}
+  }
+  @media (max-width:560px){
+    .step{grid-template-columns:1fr}
+    .tick{padding:14px 16px 0}
+    .body{padding:6px 16px 16px}
+    nav.toc a{grid-template-columns:50px 1fr;gap:8px}
+    nav.toc .c{grid-column:2;font-size:10px}
+  }
+</style>
+
+<div class="wrap">
+
+<header class="top">
+  <span class="eyebrow">経費申請効率化 ／ 実装</span>
+  <h1>セットアップ手順</h1>
+  <p class="sub">
+    Apps Scriptにコードを入れ、動作確認を経て、月3回の自動実行を登録するまでの全手順です。
+    上から順に進めてください。各手順にチェックを入れると、進み具合が上部に表示されます。
+  </p>
+  <p class="meta">株式会社デジライズ ／ v1.0 ／ 所要 約60〜90分</p>
+  <p class="meta" style="color:var(--accent)">公開サンプル版：フォルダID・氏名・メールアドレスはすべてダミー値です</p>
+</header>
+
+<div class="progress">
+  <span class="ptext" id="ptext">0 / 0 完了</span>
+  <span class="bar"><i id="pbar"></i></span>
+  <button class="reset" id="reset" type="button">チェックを消す</button>
+</div>
+
+<nav class="toc" aria-label="手順の全体">
+  <h2>全体の流れ</h2>
+  <ol>
+    <li><a href="#p0"><span class="n">準備</span><span class="t">フォルダとスプレッドシートを作る</span><span class="c">15分</span></a></li>
+    <li><a href="#p1"><span class="n">STEP 1</span><span class="t">Apps Scriptプロジェクトを作る</span><span class="c">5分</span></a></li>
+    <li><a href="#p2"><span class="n">STEP 2</span><span class="t">マニフェストを差し替える</span><span class="c">5分</span></a></li>
+    <li><a href="#p3"><span class="n">STEP 3</span><span class="t">コードを5ファイル貼り付ける</span><span class="c">10分</span></a></li>
+    <li><a href="#p4"><span class="n">STEP 4</span><span class="t">CONFIGを自社の環境に書き換える</span><span class="c">10分</span></a></li>
+    <li><a href="#p5"><span class="n">STEP 5</span><span class="t">設定不要のテストを3つ動かす</span><span class="c">10分</span></a></li>
+    <li><a href="#p6"><span class="n">STEP 6</span><span class="t">領収書1件で本処理を試す</span><span class="c">15分</span></a></li>
+    <li><a href="#p7"><span class="n">STEP 7</span><span class="t">カレンダー系の2つを動かす</span><span class="c">10分</span></a></li>
+    <li><a href="#p8"><span class="n">STEP 8</span><span class="t">月3回の自動実行を登録する</span><span class="c">5分</span></a></li>
+    <li><a href="#p9"><span class="n">任意</span><span class="t">マネーフォワード連携を有効にする</span><span class="c">後日</span></a></li>
+    <li><a href="#ref"><span class="n">付録</span><span class="t">一覧表とトラブル対応</span><span class="c">―</span></a></li>
+  </ol>
+</nav>
+
+
+<!-- ============ 準備 ============ -->
+<section class="phase" id="p0">
+  <div class="phase-head"><span class="phase-num">準備</span><h2>フォルダとスプレッドシートを作る</h2></div>
+  <p class="phase-note">
+    先に置き場所を作ります。ここで控えた<strong>5つのID</strong>を、あとでコードに貼り付けます。
+    メモ帳などを開いて、控えながら進めてください。
+  </p>
+
+  <div class="step">
+    <div class="tick"><input type="checkbox" data-k="p0a" aria-label="完了"></div>
+    <div class="body">
+      <h3><span class="n">0-1</span>共有ドライブに4つのフォルダを作る</h3>
+      <p class="lead">既にある「領収書保管フォルダー」の隣に、下記3つを追加してください。</p>
+      <div class="scroller">
+        <table>
+          <thead><tr><th>フォルダ名</th><th>役割</th><th>状態</th></tr></thead>
+          <tbody>
+            <tr><td class="k">領収書保管フォルダー</td><td>領収書PDFを入れる場所（処理の入口）</td><td><span class="pill rec">作成済み</span></td></tr>
+            <tr><td class="k">02_処理済み</td><td>正常に処理できたPDFの移動先。中に年月フォルダが自動でできます</td><td><span class="pill req">新規</span></td></tr>
+            <tr><td class="k">03_エラー</td><td>読み取れなかったPDFの移動先</td><td><span class="pill req">新規</span></td></tr>
+            <tr><td class="k">04_検証用</td><td>テスト用のPDFを置く場所（任意）</td><td><span class="pill opt">任意</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>フォルダ名は上記のとおりでなくても構いません。あとでIDで指定するためです。</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="tick"><input type="checkbox" data-k="p0b" aria-label="完了"></div>
+    <div class="body">
+      <h3><span class="n">0-2</span>フォルダIDを控える</h3>
+      <p class="lead">フォルダを開いたときのURLの、<strong><code class="inl">/folders/</code> より後ろ</strong>がIDです。</p>
+      <div class="val"><code>https://drive.google.com/drive/folders/1AbCdEfGhIjKlMnOpQrStUvWxYz01234
+                                       └──────── ここがID ────────┘</code><button type="button" data-copy="1AbCdEfGhIjKlMnOpQrStUvWxYz01234">コピー</button></div>
+      <p>3つ（または4つ）ぶん、同じ要領で控えてください。上の例は「領収書保管フォルダー」の実際のIDです。</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="tick"><input type="checkbox" data-k="p0c" aria-label="完了"></div>
+    <div class="body">
+      <h3><span class="n">0-3</span>ログ用のスプレッドシートを1つ作る</h3>
+      <p class="lead">名前は「経費自動化_処理ログ」など分かるものにしてください。<strong>シートは空のままで構いません。</strong>必要なシートはコードが自動で作ります。</p>
+      <p>作られるシートは次の5つです。</p>
+      <div class="scroller">
+        <table>
+          <thead><tr><th>シート名</th><th>中身</th></tr></thead>
+          <tbody>
+            <tr><td class="k">処理ログ</td><td>領収書1件につき1行。13列（付録を参照）</td></tr>
+            <tr><td class="k">区間マスタ</td><td>出発／到着／交通機関／片道金額。運賃の引き当て元</td></tr>
+            <tr><td class="k">表記辞書</td><td>表記ゆれの変換表</td></tr>
+            <tr><td class="k">辞書の追記候補</td><td>辞書に無い地名の洗い出し結果</td></tr>
+            <tr><td class="k">締め処理レポート</td><td>月3回の実行結果と、未提出の内訳</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="note">
+        <span class="lbl">区間マスタだけ手で作ってください</span>
+        <p>1行目に見出し、2行目から中身を入れます。空でも動きますが、その場合は運賃が入りません。</p>
+        <pre class="code">A列      B列      C列        D列
+出発     到着     交通機関    片道金額
+東京     大分     飛行機      31000
+東京     新大阪   新幹線      14720</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="tick"><input type="checkbox" data-k="p0d" aria-label="完了"></div>
+    <div class="body">
+      <h3><span class="n">0-4</span>スプレッドシートIDを控える</h3>
+      <p class="lead">URLの <code class="inl">/d/</code> と <code class="inl">/edit</code> の<strong>あいだ</strong>がIDです。</p>
+      <div class="val"><code>https://docs.google.com/spreadsheets/d/1ZyXwVuTsRqPoNmLkJiHgFeDcBa9876543/edit
+                                      └──────────── ここがID ────────────┘</code><button type="button" data-copy="/d/ と /edit のあいだ">コピー</button></div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="tick"><input type="checkbox" data-k="p0e" aria-label="完了"></div>
+    <div class="body">
+      <h3><span class="n">0-5</span>カレンダーIDと通知先を決める</h3>
+      <ul>
+        <li><strong>カレンダーID</strong>：実行する方ご自身のカレンダーを使うなら <code class="inl">primary</code> のままで構いません。他の方のカレンダーを見る場合は、そのカレンダーの設定画面の「カレンダーの統合」にある<strong>カレンダーID</strong>（<code class="inl">〜@group.calendar.google.com</code> の形）を控えます。</li>
+        <li><strong>通知先メールアドレス</strong>：要確認・エラー・申請漏れの連絡先です。経理ご担当の方のアドレスを想定しています。</li>
+      </ul>
+      <div class="note">
+        <span class="lbl">他の方のカレンダーを見る場合</span>
+        <p>そのカレンダーが、スクリプトを実行する方に<strong>共有されている</strong>必要があります。共有されていないと「カレンダーが見つかりません」で止まります。権限は<strong>閲覧のみ</strong>で足ります。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ============ STEP 1 ============ -->
+<section class="phase" id="p1">
+  <div class="phase-head"><span class="phase-num">STEP 1</span><h2>Apps Scriptプロジェクトを作る</h2></div>
+
+  <div class="step">
+    <div class="tick"><input type="checkbox" data-k="p1a" aria-label="完了"></div>
+    <div class="body">
+      <h3><span class="n">1-1</span>新しいプロジェクトを作る</h3>
+      <div class="val"><code>https://script.google.com/</code><button type="button" data-copy="https://script.google.com/">コピー</button></div>
+      <div class="path"><b>script.google.com を開く</b><i>→</i><b>新しいプロジェクト</b></div>
+      <p>左上の「無題のプロジェクト」をクリックして、名前を <strong>経費自動化</strong> に変更してください。</p>
+      <div class="note crit">
+        <span class="lbl">議事録連携とは別プロジェクトにしてください</span>
+        <p>経費自動化と議事録連携の両方に <code class="inl">now_()</code> という同じ名前の関数があります。同じプロジェクトに入れると、あとから読み込まれたほうが優先され、意図しない動きになります。<strong>必ず別々のプロジェクト</strong>として作ってください。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ============ STEP 2 ============ -->
+<section class="phase" id="p2">
+  <div class="phase-head"><span class="phase-num">STEP 2</span><h2>マニフェストを差し替える</h2></div>
+  <p class="phase-note">
+    PDFを読み取る処理で <strong>Drive API</strong> を使います。ここを飛ばすと必ずエラーで止まるため、
+    コードを貼る前に済ませてください。
+  </p>
+
+  <div class="step">
+    <div class="tick"><input type="checkbox" data-k="p2a" aria-label="完了"></div>
+    <div class="body">
+      <h3><span class="n">2-1</span>マニフェストを表示する設定にする</h3>
+      <div class="path"><b>左の歯車アイコン</b><i>→</i><b>プロジェクトの設定</b><i>→</i><b>「appsscript.json マニフェスト ファイルをエディタで表示する」にチェック</b></div>
+      <p>エディタに戻ると、ファイル一覧に <code class="inl">appsscript.json</code> が現れます。</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="tick"><input type="checkbox" data-k="p2b" aria-label="完了"></div>
+    <div class="body">
+      <h3><span class="n">2-2</span>中身をまるごと置き換える</h3>
+      <p class="lead"><code class="inl">appsscript.json</code> を開き、<strong>全選択して削除してから</strong>下記を貼り付けます。</p>
+      <div class="val"><code>{
+  "timeZone": "Asia/Tokyo",
+  "runtimeVersion": "V8",
+  "exceptionLogging": "STACKDRIVER",
+  "dependencies": {
+    "enabledAdvancedServices": [
+      {
+        "userSymbol": "Drive",
+        "serviceId": "drive",
+        "version": "v2"
+      }
+    ]
+  }
+}</code><button type="button" data-copy='{
+  "timeZone": "Asia/Tokyo",
+  "runtimeVersion": "V8",
+  "exceptionLogging": "STACKDRIVER",
+  "dependencies": {
+    "enabledAdvancedServices": [
+      {
+        "userSymbol": "Drive",
+        "serviceId": "drive",
+        "version": "v2"
+      }
+    ]
+  }
+}'>コピー</button></div>
+      <p>保存（Ctrl+S ／ Cmd+S）してください。</p>
+      <div class="expect">
+        <span class="lbl">こうなればOK</span>
+        <p>左の「サービス」欄に <strong>Drive</strong> が追加されていれば成功です。表示されない場合は、いったんページを再読み込みしてください。</p>
+      </div>
+      <div class="note">
+        <span class="lbl">うまくいかないとき</span>
+        <p>マニフェストを触らず、<strong>左の「サービス」の＋ → Drive API → バージョン v2 → 追加</strong>でも同じ結果になります。やりやすいほうで構いません。ただしタイムゾーンは別途「プロジェクトの設定」で <strong>日本標準時</strong> にしてください。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ============ STEP 3 ============ -->
+<section class="phase" id="p3">
+  <div class="phase-head"><span class="phase-num">STEP 3</span><h2>コードを5ファイル貼り付ける</h2></div>
+  <p class="phase-note">
+    ドライブの配布用フォルダにある .txt を、1つずつ新しいスクリプトファイルとして貼り付けます。
+  </p>
+
+  <div class="step">
+    <div class="tick"><input type="checkbox" data-k="p3a" aria-label="完了"></div>
+    <div class="body">
+      <h3><span class="n">3-1</span>最初からある Code.gs を消す</h3>
+      <p class="lead">初期状態の <code class="inl">Code.gs</code> は使いません。ファイル名の右の「⋮」から<strong>削除</strong>してください。</p>
+      <p>残しておくと <code class="inl">myFunction</code> が実行対象の一覧に出てきて紛らわしくなります。</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="tick"><input type="checkbox" data-k="p3b" aria-label="完了"></div>
+    <div class="body">
+      <h3><span class="n">3-2</span>5つのファイルを追加する</h3>
+      <div class="path"><b>ファイルの右の ＋</b><i>→</i><b>スクリプト</b><i>→</i><b>名前を入力</b></div>
+      <p>ファイル名は下記のとおりにしてください（拡張子 .gs は自動で付きます）。順番はどれからでも構いません。</p>
+      <div class="scroller">
+        <table>
+          <thead><tr><th>付ける名前</th><th>貼り付ける元ファイル</th><th>要否</th></tr></thead>
+          <tbody>
+            <tr><td class="m">メイン</td><td>01_経費自動化_メイン.gs.txt</td><td><span class="pill req">必須</span></td></tr>
+            <tr><td class="m">締め処理</td><td>02_経費自動化_締め処理.gs.txt</td><td><span class="pill req">必須</span></td></tr>
+            <tr><td class="m">表記ゆれ辞書</td><td>03_経費自動化_表記ゆれ辞書.gs.txt</td><td><span class="pill rec">推奨</span></td></tr>
+            <tr><td class="m">区間料金と命名規則</td><td>04_経費自動化_区間料金と命名規則.gs.txt</td><td><span class="pill opt">任意</span></td></tr>
+            <tr><td class="m">メール収集</td><td>05_経費自動化_メール収集.gs.txt</td><td><span class="pill opt">任意</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>各ファイルとも、<strong>元からある中身を全選択して消してから</strong>貼り付けてください。<code class="inl">function myFunction() {}</code> が残っていると重複します。</p>
+      <div class="expect">
+        <span class="lbl">こうなればOK</span>
+        <p>左のファイル一覧に <strong>appsscript.json ＋ 5ファイル</strong>が並び、赤い波線（構文エラー）が出ていない状態です。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ============ STEP 4 ============ -->
+<section class="phase" id="p4">
+  <div class="phase-head"><span class="phase-num">STEP 4</span><h2>CONFIGを自社の環境に書き換える</h2></div>
+  <p class="phase-note">
+    書き換えるのは <strong>「メイン」ファイルの先頭にある CONFIG だけ</strong>です。他のファイルは触らなくて構いません。
+  </p>
+
+  <div class="step">
+    <div class="tick"><input type="checkbox" data-k="p4a" aria-label="完了"></div>
+    <div class="body">
+      <h3><span class="n">4-1</span>6項目を埋める</h3>
+      <p class="lead">「メイン」を開き、上から20行目あたりの <code class="inl">const CONFIG = {</code> の中を書き換えます。</p>
+      <div class="scroller">
+        <table>
+          <thead><tr><th>項目</th><th>入れるもの</th><th>準備の番号</th></tr></thead>
+          <tbody>
+            <tr><td class="m">FOLDER_IN</td><td>領収書保管フォルダーのID</td><td>0-2</td></tr>
+            <tr><td class="m">FOLDER_DONE</td><td>02_処理済み のID</td><td>0-2</td></tr>
+            <tr><td class="m">FOLDER_ERROR</td><td>03_エラー のID</td><td>0-2</td></tr>
+            <tr><td class="m">LOG_SHEET_ID</td><td>スプレッドシートのID</td><td>0-4</td></tr>
+            <tr><td class="m">CALENDAR_ID</td><td><code class="inl">primary</code> または カレンダーID</td><td>0-5</td></tr>
+            <tr><td class="m">NOTIFY_EMAIL</td><td>通知先のメールアドレス</td><td>0-5</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>書き換え後はこのような形になります。</p>
+      <pre class="code">const CONFIG = {
+  FOLDER_IN:    '1AbCdEfGhIjKlMnOpQrStUvWxYz01234',
+  FOLDER_DONE:  '（02_処理済みのID）',
+  FOLDER_ERROR: '（03_エラーのID）',
+
+  LOG_SHEET_ID: '（スプレッドシートのID）',
+  LOG_SHEET_NAME: '処理ログ',
+  FARE_SHEET_NAME: '区間マスタ',
+
+  CALENDAR_ID: 'primary',
+  NOTIFY_EMAIL: 'keiri@example.co.jp',
+
+  CLOSING_DAY: 20,
+  ENABLE_MF: false,      ← ここは false のまま
+};</pre>
+      <div class="note crit">
+        <span class="lbl">ENABLE_MF は false のままにしてください</span>
+        <p><code class="inl">true</code> にすると、テスト中の領収書がマネーフォワードへ登録されてしまいます。判定結果をひととおり確認したあと、STEP 9 で切り替えます。</p>
+      </div>
+      <div class="note">
+        <span class="lbl">よくある入力ミス</span>
+        <ol>
+          <li>IDを<strong>URLごと</strong>貼ってしまう（ID部分だけを貼ってください）</li>
+          <li>前後の <strong>シングルクォート <code class="inl">'</code> を消してしまう</strong></li>
+          <li>行末の <strong>カンマ <code class="inl">,</code> を消してしまう</strong></li>
+        </ol>
+        <p>いずれも赤い波線が出るので、保存前に確認してください。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ============ STEP 5 ============ -->
+<section class="phase" id="p5">
+  <div class="phase-head"><span class="phase-num">STEP 5</span><h2>設定不要のテストを3つ動かす</h2></div>
+  <p class="phase-note">
+    いきなり本処理を動かさず、<strong>単体で動く関数から</strong>確認します。ここが通れば、コードの貼り付けとCONFIGは正しく入っています。
+  </p>
+
+  <div class="step">
+    <div class="tick"><input type="checkbox" data-k="p5a" aria-label="完了"></div>
+    <div class="body">
+      <h3><span class="n">5-1</span>締め区間の計算を確認する</h3>
+      <div class="path"><b>上部の関数リスト</b><i>→</i><b>testClosingPeriod_</b><i>→</i><b>実行</b></div>
+      <p>この関数は<strong>外部に一切アクセスしません</strong>。承認画面も出ず、すぐ結果が出ます。</p>
+      <div class="expect">
+        <span class="lbl">実行ログにこう出ればOK</span>
+<pre>2026-08-20（手動実行）→ 対象区間 2026-06-21 〜 2026-07-20
+2026-08-21（①締め直後）→ 対象区間 2026-07-21 〜 2026-08-20
+2026-08-31（手動実行）→ 対象区間 2026-07-21 〜 2026-08-20
+2026-09-01（②拾い直し）→ 対象区間 2026-07-21 〜 2026-08-20
+2026-09-08（③最終チェック）→ 対象区間 2026-07-21 〜 2026-08-20
+2026-09-20（手動実行）→ 対象区間 2026-07-21 〜 2026-08-20
+2026-09-21（①締め直後）→ 対象区間 2026-08-21 〜 2026-09-20</pre>
+        <p><strong>8/21・9/1・9/8 の3回がすべて同じ区間</strong>を指していることが要点です。1つの締め区間を3回にわたって拾い直す設計になっています。</p>
+      </div>
+      <p>実行ログは、エディタ下部の<strong>「実行ログ」</strong>に出ます。表示されていない場合は、上部メニューの「表示」→「ログ」でも開けます。</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="tick"><input type="checkbox" data-k="p5b" aria-label="完了"></div>
+    <div class="body">
+      <h3><span class="n">5-2</span>予定タイトルの解析を確認する</h3>
+      <div class="path"><b>関数リスト</b><i>→</i><b>testParseTitles_</b><i>→</i><b>実行</b></div>
+      <p>「区間料金と命名規則」を入れた場合のみ実行できます。<code class="inl">move///東京→大分</code> のような命名が正しく分解されるかを見ます。</p>
+      <div class="expect">
+        <span class="lbl">確認したいこと</span>
+        <p>プレフィックス（move / meeting / gathering など）と、移動の<strong>出発地・到着地</strong>が正しく取り出せていること。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="tick"><input type="checkbox" data-k="p5c" aria-label="完了"></div>
+    <div class="body">
+      <h3><span class="n">5-3</span>表記ゆれの変換を確認する</h3>
+      <div class="path"><b>関数リスト</b><i>→</i><b>testNormalize_</b><i>→</i><b>実行</b></div>
+      <p class="lead">この関数は<strong>スプレッドシートに書き込みます</strong>。ここで初めて承認画面が出ます。</p>
+      <div class="note crit">
+        <span class="lbl">初回だけ、承認の画面が出ます</span>
+        <ol>
+          <li><strong>権限を確認</strong> をクリック</li>
+          <li>アカウントを選択</li>
+          <li>「このアプリは Google で確認されていません」→ <strong>詳細</strong> をクリック</li>
+          <li><strong>「経費自動化（安全ではないページ）に移動」</strong> をクリック</li>
+          <li><strong>許可</strong> をクリック</li>
+        </ol>
+        <p>ご自身で作ったスクリプトのため、この表示で問題ありません。3〜4の手順は分かりにくいので、見落とさないようご注意ください。</p>
+      </div>
+      <div class="expect">
+        <span class="lbl">実行ログにこう出ればOK</span>
+<pre>「表記辞書」シートに見本を4件入れました
+山田 太郎 ／ 本社 → 東京
+鈴木 花子 ／ 本社 → 本社
+(担当者なし) ／ ＴＯＫＹＯ → 東京
+(担当者なし) ／ 東京 駅 → 東京
+(担当者なし) ／ 名古屋 → 名古屋</pre>
+        <p>読み取り方は次のとおりです。</p>
+        <ul>
+          <li><strong>本社→東京</strong>：個人ルールが本人にだけ効いています</li>
+          <li><strong>鈴木さんは本社のまま</strong>：他の方には適用されません（正しい動作です）</li>
+          <li><strong>ＴＯＫＹＯ／東京 駅→東京</strong>：全角と空白のゆれを吸収しています</li>
+          <li><strong>名古屋はそのまま</strong>：辞書に無いものは変換しません</li>
+        </ul>
+      </div>
+      <p>スプレッドシートを開くと「表記辞書」シートができ、見本が4行入っています。実運用ではこのシートを増やしていきます。</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ============ STEP 6 ============ -->
+<section class="phase" id="p6">
+  <div class="phase-head"><span class="phase-num">STEP 6</span><h2>領収書1件で本処理を試す</h2></div>
+  <p class="phase-note">
+    ここが山場です。<strong>いきなり全件入れず、1件だけ</strong>で挙動を確かめてください。
+  </p>
+
+  <div class="step">
+    <div class="tick"><input type="checkbox" data-k="p6a" aria-label="完了"></div>
+    <div class="body">
+      <h3><span class="n">6-1</span>領収書PDFを1件だけ置く</h3>
+      <p class="lead">FOLDER_IN に指定したフォルダに、PDFを<strong>1件だけ</strong>入れてください。</p>
+      <p>できれば、<strong>カレンダーに対応する予定がある日付</strong>の領収書を選んでください。突合まで通して確認できます。</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="tick"><input type="checkbox" data-k="p6b" aria-label="完了"></div>
+    <div class="body">
+      <h3><span class="n">6-2</span>main を実行する</h3>
+      <div class="path"><b>関数リスト</b><i>→</i><b>main</b><i>→</i><b>実行</b></div>
+      <p>ドライブ・スプレッドシート・カレンダー・メールの権限を求められます。STEP 5-3 と同じ手順で許可してください。</p>
+      <div class="expect">
+        <span class="lbl">実行ログにこう出ればOK</span>
+<pre>完了：正常 1 / 要確認 0 / エラー 0</pre>
+        <p><strong>「要確認 1」でも失敗ではありません。</strong>下記のどちらかを意味します。</p>
+        <ul>
+          <li>その日のカレンダーに<strong>候補の予定が複数あった</strong>（どれか選べなかった）</li>
+          <li>その日に<strong>予定が無かった</strong>（摘要を手入力する必要がある）</li>
+        </ul>
+        <p>いずれも処理ログの「備考」列に理由が入ります。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="tick"><input type="checkbox" data-k="p6c" aria-label="完了"></div>
+    <div class="body">
+      <h3><span class="n">6-3</span>結果を4か所で確認する</h3>
+      <div class="scroller">
+        <table>
+          <thead><tr><th>#</th><th>見る場所</th><th>確認すること</th></tr></thead>
+          <tbody>
+            <tr><td class="m">1</td><td>処理ログ シート</td><td>1行増えている。<strong>利用日</strong>が発行日ではなく搭乗日・乗車日になっている</td></tr>
+            <tr><td class="m">2</td><td>同上</td><td><strong>金額</strong>が合計額になっている（手数料の0円を拾っていない）</td></tr>
+            <tr><td class="m">3</td><td>02_処理済み フォルダ</td><td>年月フォルダ（例 2026-09）ができ、その中にPDFが移動している</td></tr>
+            <tr><td class="m">4</td><td>同上のファイル名</td><td><code class="inl">20251127_JAL_34120_交通費.pdf</code> の形にリネームされている</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="note">
+        <span class="lbl">利用日がおかしいとき</span>
+        <p>領収書の書式が想定外の可能性があります。<strong>そのPDFをデジライズへ共有してください。</strong>判定ルールを追加します。実領収書4件では正しく取れていますが、書式は会社ごとに違います。</p>
+      </div>
+      <p>問題なければ、残りの領収書をまとめてフォルダに入れて <code class="inl">main</code> を再実行してください。</p>
+      <div class="note">
+        <span class="lbl">件数が多いとき</span>
+        <p>1回の実行は<strong>6分</strong>で強制終了されます。PDFのOCRは1件あたり数秒かかるため、目安として<strong>50〜80件を超えるときは分割</strong>してください。途中で止まっても、処理済みのファイルは移動しているので、そのまま再実行すれば続きから進みます。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ============ STEP 7 ============ -->
+<section class="phase" id="p7">
+  <div class="phase-head"><span class="phase-num">STEP 7</span><h2>カレンダー系の2つを動かす</h2></div>
+  <p class="phase-note">実運用の準備として、カレンダー側の状態を可視化します。どちらも<strong>読み取りのみ</strong>で、予定は変更しません。</p>
+
+  <div class="step">
+    <div class="tick"><input type="checkbox" data-k="p7a" aria-label="完了"></div>
+    <div class="body">
+      <h3><span class="n">7-1</span>命名規則に合わない予定を洗い出す</h3>
+      <div class="path"><b>関数リスト</b><i>→</i><b>scanCalendarNaming</b><i>→</i><b>実行</b></div>
+      <p>過去2ヶ月を走査し、<code class="inl">prefix///詳細</code> の形になっていない予定を<strong>出現回数の多い順</strong>にシートへ書き出します。</p>
+      <div class="expect">
+        <span class="lbl">「命名規則チェック」シートを開いてください</span>
+        <p>上位に来ているものが「毎月の定常訪問なのに規則外」の候補です。D列に、規則に合わせるか対象外にするかを記入していけば、そのまま運用ルールの整理表になります。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="tick"><input type="checkbox" data-k="p7b" aria-label="完了"></div>
+    <div class="body">
+      <h3><span class="n">7-2</span>辞書に無い地名を洗い出す</h3>
+      <div class="path"><b>関数リスト</b><i>→</i><b>suggestDictEntries</b><i>→</i><b>実行</b></div>
+      <p>直近35日の <code class="inl">move</code> の予定から、辞書に登録されていない地名を抽出します。</p>
+      <div class="expect">
+        <span class="lbl">「辞書の追記候補」シートを開いてください</span>
+        <p>出現回数の多い順に並んでいます。<strong>D列（正式表記）を上から埋めて、「表記辞書」シートへ移すだけ</strong>で辞書が育ちます。全部埋める必要はありません。よく出るものから順にで構いません。</p>
+      </div>
+      <div class="note">
+        <span class="lbl">辞書を編集したあとは</span>
+        <p>1回の実行中は辞書を<strong>読み込み直しません</strong>（速度のためです）。編集した内容は、次回の実行から反映されます。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ============ STEP 8 ============ -->
+<section class="phase" id="p8">
+  <div class="phase-head"><span class="phase-num">STEP 8</span><h2>月3回の自動実行を登録する</h2></div>
+
+  <div class="step">
+    <div class="tick"><input type="checkbox" data-k="p8a" aria-label="完了"></div>
+    <div class="body">
+      <h3><span class="n">8-1</span>いちど手動で通す</h3>
+      <div class="path"><b>関数リスト</b><i>→</i><b>runClosingBatch</b><i>→</i><b>実行</b></div>
+      <p>これが本番と同じ処理です。領収書の処理 → カレンダーとの突合 → レポート出力 → 未提出の通知、までを一気に行います。</p>
+      <div class="expect">
+        <span class="lbl">実行ログにこう出ればOK</span>
+<pre>締め処理を開始します：手動実行（対象区間 2026-07-21 〜 2026-08-20）
+完了：正常 3 / 要確認 1 / エラー 0
+締め処理が終わりました：出張予定 5件 ／ 領収書 4件 ／ 未提出 1件</pre>
+        <p>「締め処理レポート」シートに1行増え、未提出の内訳が入ります。未提出があれば通知先へメールが飛びます。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="tick"><input type="checkbox" data-k="p8b" aria-label="完了"></div>
+    <div class="body">
+      <h3><span class="n">8-2</span>トリガーを登録する</h3>
+      <div class="path"><b>関数リスト</b><i>→</i><b>setupClosingTriggers</b><i>→</i><b>実行</b></div>
+      <p>この関数を1回実行するだけで、3本のトリガーが登録されます。画面から1本ずつ作る必要はありません。</p>
+      <div class="scroller">
+        <table>
+          <thead><tr><th>タイミング</th><th>役割</th></tr></thead>
+          <tbody>
+            <tr><td class="k">毎月21日 1時台</td><td>締め直後。区間の内容をまとめて登録</td></tr>
+            <tr><td class="k">毎月 1日 8時台</td><td>遅れて届いた領収書の拾い直し</td></tr>
+            <tr><td class="k">毎月 8日 8時台</td><td>申請期限前の最終チェック</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="expect">
+        <span class="lbl">確認方法</span>
+        <p>左の<strong>時計アイコン（トリガー）</strong>を開き、<code class="inl">runClosingBatch</code> が<strong>3本</strong>並んでいれば成功です。</p>
+      </div>
+      <div class="note">
+        <span class="lbl">何度実行しても増えません</span>
+        <p>この関数は、登録前に <code class="inl">runClosingBatch</code> の古いトリガーを削除します。設定を変えて再実行しても重複しません。ただし<strong>画面から手で作ったトリガーがある場合は、先に削除</strong>してください。同じ処理が二重に走ります。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ============ STEP 9 ============ -->
+<section class="phase" id="p9">
+  <div class="phase-head"><span class="phase-num">任意</span><h2>マネーフォワード連携を有効にする</h2></div>
+  <p class="phase-note">
+    API情報が揃ってから実施してください。<strong>ここまでの手順だけでも、判定・突合・レポートは動きます。</strong>
+  </p>
+
+  <div class="step">
+    <div class="tick"><input type="checkbox" data-k="p9a" aria-label="完了"></div>
+    <div class="body">
+      <h3><span class="n">9-1</span>スクリプトプロパティに登録する</h3>
+      <div class="path"><b>歯車</b><i>→</i><b>プロジェクトの設定</b><i>→</i><b>下部のスクリプト プロパティ</b><i>→</i><b>スクリプト プロパティを追加</b></div>
+      <div class="scroller">
+        <table>
+          <thead><tr><th>プロパティ名</th><th>値</th><th>必要な場面</th></tr></thead>
+          <tbody>
+            <tr><td class="m">MF_ACCESS_TOKEN</td><td>マネーフォワード経費のアクセストークン</td><td>MF連携</td></tr>
+            <tr><td class="m">MF_OFFICE_ID</td><td>事業所ID</td><td>MF連携</td></tr>
+            <tr><td class="m">EKISPERT_KEY</td><td>駅すぱあとAPIのキー</td><td>運賃の自動取得</td></tr>
+            <tr><td class="m">CHAT_WEBHOOK_URL</td><td>Google ChatのWebhook URL</td><td>出張確認をチャットで送る場合</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="note crit">
+        <span class="lbl">コードに直接書かないでください</span>
+        <p>トークンやキーをコードに書くと、コードを共有したときにそのまま漏れます。必ずスクリプトプロパティに入れてください。<strong>スプレッドシートに書くのも避けてください</strong>（閲覧権限のある方全員に見えます）。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="tick"><input type="checkbox" data-k="p9b" aria-label="完了"></div>
+    <div class="body">
+      <h3><span class="n">9-2</span>ENABLE_MF を true にする</h3>
+      <p class="lead">「メイン」の CONFIG を <code class="inl">ENABLE_MF: true,</code> に変更して保存します。</p>
+      <p>次の実行から、マネーフォワードへ経費明細が登録されます。摘要にはメモ・区間・運賃がまとめて入ります。</p>
+      <div class="expect">
+        <span class="lbl">登録される摘要の形</span>
+<pre>A社訪問（東京→大分）のため　区間:東京→大分　運賃:31,000円</pre>
+        <p>貴社の書式サンプルをいただければ、この組み立て方をそちらに合わせます（<code class="inl">buildMfRemark_</code> の1関数だけの変更で済みます）。</p>
+      </div>
+      <div class="note">
+        <span class="lbl">まず1件で試してください</span>
+        <p>登録先を間違えると取り消しが手間になります。<strong>領収書1件だけをフォルダに入れて実行し、マネーフォワード側で内容を確認</strong>してから、本格運用に移ってください。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ============ 付録 ============ -->
+<section class="phase" id="ref">
+  <div class="phase-head"><span class="phase-num">付録</span><h2>一覧表とトラブル対応</h2></div>
+
+  <h3 style="font-size:15px;margin:24px 0 0">処理ログの13列</h3>
+  <div class="scroller">
+    <table>
+      <thead><tr><th>#</th><th>列名</th><th>内容</th></tr></thead>
+      <tbody>
+        <tr><td class="m">1</td><td class="k">実行日時</td><td>処理した日時</td></tr>
+        <tr><td class="m">2</td><td class="k">ファイル名</td><td>リネーム後の名前</td></tr>
+        <tr><td class="m">3</td><td class="k">発行元</td><td>ANA・JR・ホテル など</td></tr>
+        <tr><td class="m">4</td><td class="k">利用日</td><td>発行日ではなく、乗車日・搭乗日</td></tr>
+        <tr><td class="m">5</td><td class="k">金額</td><td>領収書の合計額</td></tr>
+        <tr><td class="m">6</td><td class="k">費用区分</td><td>交通費／宿泊費／接待交際費／雑費</td></tr>
+        <tr><td class="m">7</td><td class="k">区間</td><td>東京→大分 など（辞書で正規化済み）</td></tr>
+        <tr><td class="m">8</td><td class="k">運賃</td><td>区間マスタから引き当てた金額</td></tr>
+        <tr><td class="m">9</td><td class="k">メモ（摘要）</td><td>マネーフォワードへ送る摘要文</td></tr>
+        <tr><td class="m">10</td><td class="k">突合した予定</td><td>カレンダー上の候補</td></tr>
+        <tr><td class="m">11</td><td class="k">MF登録ID</td><td>連携したときの登録ID</td></tr>
+        <tr><td class="m">12</td><td class="k">状態</td><td>正常／要確認／エラー</td></tr>
+        <tr><td class="m">13</td><td class="k">備考</td><td>要確認の理由など</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="font-size:13.5px;color:var(--ink-2)">
+    締め処理は列の位置ではなく<strong>見出し名</strong>で列を探します。列を足したり並べ替えても動きます。ただし<strong>「利用日」の列名だけは変更しないでください</strong>。
+  </p>
+
+  <h3 style="font-size:15px;margin:30px 0 0">実行できる関数の一覧</h3>
+  <div class="scroller">
+    <table>
+      <thead><tr><th>関数名</th><th>すること</th><th>いつ使うか</th></tr></thead>
+      <tbody>
+        <tr><td class="m">testClosingPeriod_</td><td>締め区間の計算を表示</td><td>設定確認（外部アクセスなし）</td></tr>
+        <tr><td class="m">testParseTitles_</td><td>予定タイトルの解析を表示</td><td>設定確認</td></tr>
+        <tr><td class="m">testNormalize_</td><td>表記ゆれの変換を表示</td><td>設定確認</td></tr>
+        <tr><td class="m">main</td><td>領収書の判定・突合・リネーム</td><td>随時（手動）</td></tr>
+        <tr><td class="m">runClosingBatch</td><td>締め処理の一式</td><td>本番（自動実行される）</td></tr>
+        <tr><td class="m">setupClosingTriggers</td><td>月3回のトリガーを登録</td><td>初回1回だけ</td></tr>
+        <tr><td class="m">scanCalendarNaming</td><td>命名規則外の予定を一覧化</td><td>月1回程度</td></tr>
+        <tr><td class="m">suggestDictEntries</td><td>辞書に無い地名を洗い出し</td><td>月1回程度</td></tr>
+        <tr><td class="m">sendTripConfirmations</td><td>出張かどうかの確認を送信</td><td>運用が固まってから</td></tr>
+        <tr><td class="m">inspectReceiptMails</td><td>領収書メールの送信元を調査</td><td>Flows設定の前に</td></tr>
+        <tr><td class="m">testFareApi_</td><td>駅すぱあとAPIの応答確認</td><td>運賃自動取得を使う場合</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 style="font-size:15px;margin:30px 0 0">つまずいたときの対応</h3>
+  <div class="scroller">
+    <table>
+      <thead><tr><th>エラー・症状</th><th>原因</th><th>対応</th></tr></thead>
+      <tbody>
+        <tr><td class="m">Drive is not defined</td><td>マニフェストの差し替え漏れ</td><td>STEP 2 をやり直す</td></tr>
+        <tr><td class="m">〜 is not defined</td><td>ファイルの貼り忘れ、または名前の重複</td><td>5ファイルすべて入っているか確認</td></tr>
+        <tr><td>カレンダーが見つかりません</td><td>CALENDAR_IDの誤り、または共有されていない</td><td>IDを確認し、カレンダーを共有する</td></tr>
+        <tr><td>「要確認」が多い</td><td>予定が命名規則に合っていない</td><td><code class="inl">scanCalendarNaming</code> で規則外を洗い出す</td></tr>
+        <tr><td>利用日が発行日になる</td><td>想定外の書式</td><td>該当PDFをデジライズへ共有（ルールを追加します）</td></tr>
+        <tr><td>金額が小さすぎる</td><td>手数料の0円を拾った</td><td>合計額の周辺から最大値を取る実装です。それでも違う場合はご連絡ください</td></tr>
+        <tr><td>実行が途中で止まる</td><td>1回の実行が6分を超えた</td><td>フォルダのPDFを分割して実行</td></tr>
+        <tr><td>PDFの文字が読めない</td><td>画像だけのPDF、または解像度不足</td><td>OCRの限界です。手入力での補完が必要です</td></tr>
+        <tr><td>指定時刻に動いていない</td><td>トリガーの重複、または実行エラー</td><td>時計アイコンの<strong>実行数</strong>タブでエラー内容を確認</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note" style="margin-top:24px">
+    <span class="lbl">解決しないとき</span>
+    <p>弊社の担当窓口へ、<strong>①実行した関数名 ②実行ログの全文 ③処理ログの該当行のスクリーンショット</strong>をお送りください。この3点があれば、こちらで原因まで辿れます。</p>
+  </div>
+</section>
+
+<footer class="end">
+  <span>株式会社デジライズ</span>
+  <span>セットアップ手順 v1.0 ／ 2026-09-08</span>
+</footer>
+
+</div>
+
+<script>
+(function(){
+  var KEY = 'setup-progress-v1';
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('.tick input[type=checkbox]'));
+  var bar = document.getElementById('pbar');
+  var ptext = document.getElementById('ptext');
+
+  function read(){
+    try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; }
+    catch(e){ return {}; }
+  }
+  function write(state){
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){}
+  }
+  function paint(){
+    var done = 0;
+    boxes.forEach(function(b){
+      var step = b.closest('.step');
+      if (step) step.classList.toggle('done', b.checked);
+      if (b.checked) done++;
+    });
+    var pct = boxes.length ? Math.round(done / boxes.length * 100) : 0;
+    bar.style.width = pct + '%';
+    ptext.textContent = done + ' / ' + boxes.length + ' 完了';
+  }
+
+  var saved = read();
+  boxes.forEach(function(b){
+    if (saved[b.dataset.k]) b.checked = true;
+    b.addEventListener('change', function(){
+      var s = read();
+      if (b.checked) s[b.dataset.k] = 1; else delete s[b.dataset.k];
+      write(s);
+      paint();
+    });
+  });
+  paint();
+
+  document.getElementById('reset').addEventListener('click', function(){
+    boxes.forEach(function(b){ b.checked = false; });
+    write({});
+    paint();
+  });
+
+  // copy buttons
+  document.querySelectorAll('button[data-copy]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var text = btn.getAttribute('data-copy');
+      var ok = function(){
+        var old = btn.textContent;
+        btn.textContent = 'コピー済';
+        btn.classList.add('copied');
+        setTimeout(function(){ btn.textContent = old; btn.classList.remove('copied'); }, 1400);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(ok, fallback);
+      } else { fallback(); }
+      function fallback(){
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); ok(); } catch(e){}
+        document.body.removeChild(ta);
+      }
+    });
+  });
+})();
+</script>
