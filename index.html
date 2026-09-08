@@ -337,7 +337,7 @@
 <nav class="toc" aria-label="手順の全体">
   <h2>全体の流れ</h2>
   <ol>
-    <li><a href="#ov"><span class="n">全体像</span><span class="t">どこからどこが、何の処理か</span><span class="c">図2点</span></a></li>
+    <li><a href="#ov"><span class="n">全体像</span><span class="t">どこからどこが、何の処理か</span><span class="c">図3点</span></a></li>
     <li><a href="#p0"><span class="n">準備</span><span class="t">フォルダとスプレッドシートを作る</span><span class="c">15分</span></a></li>
     <li><a href="#p1"><span class="n">STEP 1</span><span class="t">Apps Scriptプロジェクトを作る</span><span class="c">5分</span></a></li>
     <li><a href="#p2"><span class="n">STEP 2</span><span class="t">マニフェストを差し替える</span><span class="c">5分</span></a></li>
@@ -360,6 +360,111 @@
     セットアップを始める前に、<strong>組み上がったあとに何が起きるか</strong>を見ておいてください。
     どのファイルがどの範囲を担当しているかが分かると、うまく動かないときの切り分けが早くなります。
   </p>
+
+  <figure class="fig">
+    <div class="figbox"><svg viewBox="0 0 900 440" role="img" preserveAspectRatio="xMidYMid meet"
+         aria-label="経費申請効率化システムの全体構成。入力は領収書PDF、Googleカレンダー、区間マスタと表記辞書の3つ。処理はApps Scriptの4ファイルと月3回のトリガー。出力は処理ログ、処理済みフォルダ、マネーフォワード、通知メール、点検用シートの5つ。点検用シートと運賃は入力側の台帳へ戻り、使うほど精度が上がる循環になっている。">
+      <defs>
+        <marker id="a0" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+        </marker>
+        <marker id="a0a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/>
+        </marker>
+      </defs>
+
+      <text x="125" y="22" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor" opacity=".6" letter-spacing="1.5">入力</text>
+      <text x="440" y="22" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor" opacity=".6" letter-spacing="1.5">処理（Apps Script）</text>
+      <text x="765" y="22" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor" opacity=".6" letter-spacing="1.5">出力</text>
+
+      <!-- 入力 -->
+      <rect x="20" y="40" width="210" height="66" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <text x="34" y="62" font-size="12.5" font-weight="700" fill="currentColor">領収書PDF</text>
+      <text x="34" y="79" font-size="10.5" fill="currentColor" opacity=".7">Flowsが自動で入れる</text>
+      <text x="34" y="95" font-size="10.5" fill="currentColor" opacity=".7">／ 手で追加する</text>
+
+      <rect x="20" y="120" width="210" height="66" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <text x="34" y="142" font-size="12.5" font-weight="700" fill="currentColor">Googleカレンダー</text>
+      <text x="34" y="159" font-size="10.5" fill="currentColor" opacity=".7">move///東京→大分</text>
+      <text x="34" y="175" font-size="10.5" fill="currentColor" opacity=".7">の命名規則で書かれた予定</text>
+
+      <rect x="20" y="200" width="210" height="72" rx="3" fill="none" stroke="var(--accent)" stroke-width="2"/>
+      <text x="34" y="222" font-size="12.5" font-weight="700" fill="var(--accent)">区間マスタ・表記辞書</text>
+      <text x="34" y="239" font-size="10.5" fill="var(--accent)" opacity=".9">運賃と表記のゆれを覚える台帳</text>
+      <text x="34" y="256" font-size="10.5" fill="var(--accent)" opacity=".9">使うほど育つ（下の循環を参照）</text>
+
+      <line x1="232" y1="73" x2="266" y2="73" stroke="currentColor" stroke-width="1.6" marker-end="url(#a0)"/>
+      <line x1="232" y1="153" x2="266" y2="153" stroke="currentColor" stroke-width="1.6" marker-end="url(#a0)"/>
+      <line x1="232" y1="236" x2="266" y2="236" stroke="var(--accent)" stroke-width="1.8" marker-start="url(#a0a)" marker-end="url(#a0a)"/>
+
+      <!-- 処理 -->
+      <rect x="270" y="40" width="340" height="270" rx="4" fill="none" stroke="currentColor" stroke-width="2.2"/>
+      <rect x="284" y="60" width="312" height="42" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      <text x="296" y="78" font-size="12" font-weight="700" fill="currentColor">メイン</text>
+      <text x="296" y="94" font-size="10.5" fill="currentColor" opacity=".7">判定・カレンダー突合・リネーム・MF連携</text>
+
+      <rect x="284" y="110" width="312" height="38" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      <text x="296" y="128" font-size="12" font-weight="700" fill="currentColor">表記ゆれ辞書</text>
+      <text x="296" y="143" font-size="10.5" fill="currentColor" opacity=".7">区間の正規化・出張かどうかの確認</text>
+
+      <rect x="284" y="156" width="312" height="38" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      <text x="296" y="174" font-size="12" font-weight="700" fill="currentColor">区間料金</text>
+      <text x="296" y="189" font-size="10.5" fill="currentColor" opacity=".7">運賃の取得（駅すぱあと・任意）</text>
+
+      <rect x="284" y="202" width="312" height="42" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      <text x="296" y="220" font-size="12" font-weight="700" fill="currentColor">締め処理</text>
+      <text x="296" y="236" font-size="10.5" fill="currentColor" opacity=".7">締め区間・申請漏れ検出・命名規則の点検</text>
+
+      <rect x="284" y="256" width="312" height="40" rx="2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="5 4"/>
+      <text x="296" y="273" font-size="11" font-weight="700" fill="currentColor">自動実行（月3回）</text>
+      <text x="296" y="288" font-size="10.5" fill="currentColor" opacity=".7">21日1時 ／ 翌月1日8時 ／ 翌月8日8時</text>
+
+      <line x1="612" y1="64" x2="646" y2="64" stroke="currentColor" stroke-width="1.6" marker-end="url(#a0)"/>
+      <line x1="612" y1="117" x2="646" y2="117" stroke="currentColor" stroke-width="1.6" marker-end="url(#a0)"/>
+      <line x1="612" y1="169" x2="646" y2="169" stroke="currentColor" stroke-width="1.6" marker-end="url(#a0)"/>
+      <line x1="612" y1="226" x2="646" y2="226" stroke="currentColor" stroke-width="1.6" marker-end="url(#a0)"/>
+      <line x1="612" y1="288" x2="646" y2="288" stroke="var(--accent)" stroke-width="1.8" marker-end="url(#a0a)"/>
+
+      <!-- 出力 -->
+      <rect x="650" y="40" width="230" height="48" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <text x="664" y="60" font-size="12.5" font-weight="700" fill="currentColor">処理ログ</text>
+      <text x="664" y="77" font-size="10.5" fill="currentColor" opacity=".7">統一した13列で1件1行</text>
+
+      <rect x="650" y="96" width="230" height="42" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <text x="664" y="115" font-size="12.5" font-weight="700" fill="currentColor">02_処理済み</text>
+      <text x="664" y="131" font-size="10.5" fill="currentColor" opacity=".7">原本を年月フォルダへ退避</text>
+
+      <rect x="650" y="146" width="230" height="46" rx="3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="5 4"/>
+      <text x="664" y="166" font-size="12.5" font-weight="700" fill="currentColor">マネーフォワード</text>
+      <text x="664" y="183" font-size="10.5" fill="currentColor" opacity=".7">摘要に運賃・区間も転記（任意）</text>
+
+      <rect x="650" y="200" width="230" height="52" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <text x="664" y="220" font-size="12.5" font-weight="700" fill="currentColor">通知メール</text>
+      <text x="664" y="236" font-size="10.5" fill="currentColor" opacity=".7">要確認・申請漏れ・</text>
+      <text x="664" y="249" font-size="10.5" fill="currentColor" opacity=".7">出張かどうかの確認</text>
+
+      <rect x="650" y="260" width="230" height="56" rx="3" fill="none" stroke="var(--accent)" stroke-width="2"/>
+      <text x="664" y="280" font-size="12.5" font-weight="700" fill="var(--accent)">点検用シート</text>
+      <text x="664" y="296" font-size="10.5" fill="var(--accent)" opacity=".9">命名規則チェック</text>
+      <text x="664" y="309" font-size="10.5" fill="var(--accent)" opacity=".9">辞書の追記候補</text>
+
+      <!-- 育つ循環 -->
+      <line x1="765" y1="316" x2="765" y2="366" stroke="var(--accent)" stroke-width="1.8"/>
+      <line x1="440" y1="310" x2="440" y2="366" stroke="var(--accent)" stroke-width="1.8"/>
+      <line x1="765" y1="366" x2="125" y2="366" stroke="var(--accent)" stroke-width="1.8"/>
+      <line x1="125" y1="366" x2="125" y2="276" stroke="var(--accent)" stroke-width="1.8" marker-end="url(#a0a)"/>
+      <text x="452" y="388" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--accent)">使うほど精度が上がる循環</text>
+      <text x="452" y="405" text-anchor="middle" font-size="10.5" fill="var(--accent)" opacity=".9">1回目に取得した運賃が区間マスタに貯まり、2回目以降は参照するだけ</text>
+      <text x="452" y="421" text-anchor="middle" font-size="10.5" fill="var(--accent)" opacity=".9">追記候補に人が正式表記を書き足すと、次回から自動で表記が揃う</text>
+    </svg></div>
+    <figcaption>
+      <strong>図1：全体の構成。</strong>
+      入力は<strong>3つ</strong>（領収書・カレンダー・台帳）、出力は<strong>5つ</strong>です。
+      オレンジで示したのが<strong>使うほど育つ部分</strong>で、ここだけが人の手を必要とします。
+      逆に言えば、<strong>人が触るのは「点検用シートを見て台帳を足す」ことと、通知に応じて予定名や領収書を直すことだけ</strong>です。
+      なお、議事録のZoho・Notion連携は<strong>別のApps Scriptプロジェクト</strong>、請求書管理アプリは未着手のため、この図には含めていません。
+    </figcaption>
+  </figure>
 
   <figure class="fig">
     <div class="figbox"><svg viewBox="0 0 780 700" role="img" preserveAspectRatio="xMidYMid meet"
@@ -457,7 +562,7 @@
       <text x="540" y="671" text-anchor="middle" font-size="10.5" fill="currentColor" opacity=".7">ENABLE_MF が true のときだけ</text>
     </svg></div>
     <figcaption>
-      <strong>図1：領収書1件がたどる7つの処理。</strong>
+      <strong>図2：領収書1件がたどる7つの処理。</strong>
       ①〜⑦の縦の流れはすべて<strong>「メイン」ファイル</strong>が担当します。
       オレンジの2つ（表記辞書・区間マスタ）は<strong>途中で参照して戻ってくる</strong>もので、
       無くても処理は止まりません（その場合、区間は揃わず運賃は空欄になります）。
@@ -466,7 +571,7 @@
 
   <figure class="fig">
     <div class="figbox"><svg viewBox="0 0 780 380" role="img" preserveAspectRatio="xMidYMid meet"
-         aria-label="締め処理のrunClosingBatch関数は、内側でまずmain関数を呼んで図1の処理を全件行い、続いてカレンダーから出張予定を集め、領収書と突合して未提出を検出し、レポート追記とメール通知を行う入れ子構造。">
+         aria-label="締め処理のrunClosingBatch関数は、内側でまずmain関数を呼んで図2の処理を全件行い、続いてカレンダーから出張予定を集め、領収書と突合して未提出を検出し、レポート追記とメール通知を行う入れ子構造。">
       <defs>
         <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
           <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
@@ -479,7 +584,7 @@
       <rect x="20" y="40" width="740" height="316" rx="6" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-dasharray="7 5"/>
 
       <rect x="46" y="66" width="688" height="62" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
-      <text x="64" y="90" font-size="13" font-weight="700" fill="currentColor">① main() を呼ぶ ＝ 図1の①〜⑦を、フォルダ内の全件ぶん</text>
+      <text x="64" y="90" font-size="13" font-weight="700" fill="currentColor">① main() を呼ぶ ＝ 図2の①〜⑦を、フォルダ内の全件ぶん</text>
       <text x="64" y="110" font-size="11" fill="currentColor" opacity=".75">ここまでは「メイン」ファイルの担当。締め処理は結果を受け取るだけ</text>
       <line x1="390" y1="128" x2="390" y2="150" stroke="currentColor" stroke-width="1.6" marker-end="url(#ar2)"/>
 
@@ -498,7 +603,7 @@
       <text x="64" y="339" font-size="11" fill="currentColor" opacity=".75">通知先は CONFIG.NOTIFY_EMAIL</text>
     </svg></div>
     <figcaption>
-      <strong>図2：月3回の自動実行は、図1をまるごと内側に含みます。</strong>
+      <strong>図3：月3回の自動実行は、図2をまるごと内側に含みます。</strong>
       <code class="inl">runClosingBatch</code> は<strong>①で main() を呼んでから</strong>、②〜④の照合を行います。
       つまり<strong>手動で main() を動かすのと、自動実行の前半は同じ処理</strong>です。
       切り分けるときは、まず main() だけを単体で動かしてください。
@@ -510,15 +615,15 @@
     <table>
       <thead><tr><th>STEP</th><th>用意するもの</th><th>効いてくる場所</th></tr></thead>
       <tbody>
-        <tr><td class="m">準備</td><td>フォルダ・スプレッドシート</td><td>図1の入口と、⑦の出力先すべて</td></tr>
-        <tr><td class="m">STEP 2</td><td>マニフェスト（Drive API）</td><td><strong>図1の①</strong>。ここが無いと1手目で止まります</td></tr>
-        <tr><td class="m">STEP 3</td><td>5ファイルの貼り付け</td><td>図1の全体と、図2の外枠</td></tr>
-        <tr><td class="m">STEP 4</td><td>CONFIG（ID・通知先）</td><td>図1の入口・⑦、図2の④の宛先</td></tr>
-        <tr><td class="m">STEP 5</td><td>― （動作確認のみ）</td><td>図2の②の日付計算、図1の④の辞書</td></tr>
-        <tr><td class="m">STEP 6</td><td>― （動作確認のみ）</td><td><strong>図1の①〜⑦</strong>を1件で通す</td></tr>
-        <tr><td class="m">STEP 7</td><td>表記辞書の中身</td><td>図1の④の精度。育てるほど揃います</td></tr>
-        <tr><td class="m">STEP 8</td><td>トリガー3本</td><td><strong>図2の外枠</strong>。ここで自動運転になります</td></tr>
-        <tr><td class="m">任意</td><td>MFのトークン</td><td>図1の⑦のうち、マネーフォワードへの1本</td></tr>
+        <tr><td class="m">準備</td><td>フォルダ・スプレッドシート</td><td>図2の入口と、⑦の出力先すべて</td></tr>
+        <tr><td class="m">STEP 2</td><td>マニフェスト（Drive API）</td><td><strong>図2の①</strong>。ここが無いと1手目で止まります</td></tr>
+        <tr><td class="m">STEP 3</td><td>5ファイルの貼り付け</td><td>図2の全体と、図3の外枠</td></tr>
+        <tr><td class="m">STEP 4</td><td>CONFIG（ID・通知先）</td><td>図2の入口・⑦、図3の④の宛先</td></tr>
+        <tr><td class="m">STEP 5</td><td>― （動作確認のみ）</td><td>図3の②の日付計算、図2の④の辞書</td></tr>
+        <tr><td class="m">STEP 6</td><td>― （動作確認のみ）</td><td><strong>図2の①〜⑦</strong>を1件で通す</td></tr>
+        <tr><td class="m">STEP 7</td><td>表記辞書の中身</td><td>図2の④の精度。育てるほど揃います</td></tr>
+        <tr><td class="m">STEP 8</td><td>トリガー3本</td><td><strong>図3の外枠</strong>。ここで自動運転になります</td></tr>
+        <tr><td class="m">任意</td><td>MFのトークン</td><td>図2の⑦のうち、マネーフォワードへの1本</td></tr>
       </tbody>
     </table>
   </div>
