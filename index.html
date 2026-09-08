@@ -288,6 +288,38 @@
   nav.toc .t{font-weight:700;font-size:14.5px}
   nav.toc .c{font-family:var(--f-mono);font-size:10.5px;color:var(--muted);white-space:nowrap}
 
+  details.src{
+    margin:8px 0;border:1px solid var(--rule);background:var(--surface);
+  }
+  details.src>summary{
+    cursor:pointer;padding:10px 14px;list-style:none;
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:14px;
+  }
+  details.src>summary::-webkit-details-marker{display:none}
+  details.src>summary::before{
+    content:"▸";color:var(--accent);font-size:12px;flex:none;
+  }
+  details.src[open]>summary::before{content:"▾"}
+  details.src>summary:hover{background:var(--surface-2)}
+  details.src>summary:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+  details.src .fn{font-family:var(--f-mono);font-weight:600;font-size:13px}
+  details.src .sz{font-family:var(--f-mono);font-size:10.5px;color:var(--muted);margin-left:auto}
+  .srcdesc{margin:0;padding:0 14px 8px;font-size:13px;color:var(--ink-2)}
+  .srcbar{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    padding:8px 14px;background:var(--surface-2);border-top:1px solid var(--rule);
+    border-bottom:1px solid var(--rule);
+  }
+  .srcfile{font-family:var(--f-mono);font-size:11.5px;color:var(--ink-2)}
+  .srcbar button{
+    margin-left:auto;border:1px solid var(--accent);background:none;color:var(--accent);
+    font-family:var(--f-mono);font-size:11.5px;padding:5px 14px;cursor:pointer;border-radius:2px;
+  }
+  .srcbar button:hover{background:var(--accent-soft)}
+  .srcbar button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .srcbar button.copied{font-weight:700}
+  pre.srcpre{margin:0;max-height:440px;overflow:auto;border-radius:0;font-size:11.5px;line-height:1.65}
+
   figure.fig{margin:24px 0 0;padding:0}
   .figbox{overflow-x:auto;border:1px solid var(--rule);background:var(--surface)}
   figure.fig svg{display:block;width:100%;min-width:680px;height:auto;padding:16px 12px}
@@ -842,6 +874,1557 @@
         <span class="lbl">こうなればOK</span>
         <p>左のファイル一覧に <strong>appsscript.json ＋ 5ファイル</strong>が並び、赤い波線（構文エラー）が出ていない状態です。</p>
       </div>
+
+      <h4 style="font-size:14px;margin:22px 0 2px;font-weight:700">貼り付けるコード（ここで開いてコピーできます）</h4>
+      <p style="margin:4px 0 10px;font-size:13.5px;color:var(--ink-2)">ドライブを開かなくても、下の各行をクリックすれば全文が出ます。</p>
+      <details class="src">
+        <summary><span class="fn">メイン</span><span class="pill req">必須</span><span class="sz">469行 / 約20KB</span></summary>
+        <p class="srcdesc">領収書の判定・カレンダー突合・リネーム・マネーフォワード連携・ログ出力</p>
+        <div class="srcbar"><span class="srcfile">01_経費自動化_メイン.gs</span><button type="button" data-copy-src="src-main">全文をコピー</button></div>
+        <pre class="code srcpre" id="src-main">/**
+ * 経費申請効率化 バッチ本体
+ * ------------------------------------------------------------------
+ * 処理：投入フォルダの領収書を
+ *   ① 判定・リネーム → ② カレンダー突合 → ③ 区間料金の引き当て
+ *   → ④ MF経費へ連携（任意） → ⑤ ログ出力・通知
+ *
+ * 設計：デジライズ ／ 実装・カスタマイズ：貴社
+ * ★TODO の箇所を自社環境に合わせて設定してください。
+ * サーバー不要。毎月21日の時間主導トリガーで自動実行できます。
+ * ------------------------------------------------------------------
+ */
+
+// ========================= CONFIG（ここだけ編集） =========================
+const CONFIG = {
+  // ★TODO: 各フォルダのID（フォルダURLの /folders/ 以降）
+  FOLDER_IN:    &#x27;ここに「01_投入」フォルダIDを貼る&#x27;,
+  FOLDER_DONE:  &#x27;ここに「02_処理済み」フォルダIDを貼る&#x27;,
+  FOLDER_ERROR: &#x27;ここに「03_エラー」フォルダIDを貼る&#x27;,
+
+  // ★TODO: ログ用スプレッドシートのID（URLの /d/ と /edit の間）
+  LOG_SHEET_ID: &#x27;ここにスプレッドシートIDを貼る&#x27;,
+  LOG_SHEET_NAME: &#x27;処理ログ&#x27;,
+  FARE_SHEET_NAME: &#x27;区間マスタ&#x27;,   // 案②で使用
+
+  // ★TODO: 突合に使うカレンダー（既定は実行者本人）
+  CALENDAR_ID: &#x27;primary&#x27;,
+
+  // ★TODO: エラー・要確認の通知先
+  NOTIFY_EMAIL: &#x27;keiri@example.co.jp&#x27;,
+
+  // 対象期間（締め日基準）：前月21日〜当月20日
+  CLOSING_DAY: 20,
+
+  // MF経費への連携を行うか（初回テストは false 推奨）
+  ENABLE_MF: false,
+};
+
+/**
+ * 発行元の判定辞書
+ * ★実領収書4件での検証済み（2026-08-09・正答率100%）
+ * ★順序が重要：具体的な社名を先に判定する
+ *   （例：スターフライヤーのeチケットには &quot;ANA&quot; 相当の語が混在しうるため、先に個別社を判定）
+ */
+const VENDORS = [
+  { name: &#x27;スターフライヤー&#x27;, keywords: [&#x27;スターフライヤー&#x27;, &#x27;STAR FLYER&#x27;, &#x27;Star Flyer&#x27;] },
+  { name: &#x27;ソラシド&#x27;,        keywords: [&#x27;ソラシド&#x27;, &#x27;SOLASEED&#x27;, &#x27;Solaseed&#x27;] },
+  { name: &#x27;スカイマーク&#x27;,     keywords: [&#x27;スカイマーク&#x27;, &#x27;SKYMARK&#x27;] },
+  { name: &#x27;ピーチ&#x27;,          keywords: [&#x27;Peach&#x27;, &#x27;ピーチ・アビエーション&#x27;] },
+  { name: &#x27;ジェットスター&#x27;,   keywords: [&#x27;Jetstar&#x27;, &#x27;ジェットスター&#x27;] },
+  { name: &#x27;JAL&#x27;,   keywords: [&#x27;日本航空&#x27;, &#x27;JAPAN AIRLINES&#x27;, &#x27;JAL&#x27;] },
+  { name: &#x27;ANA&#x27;,   keywords: [&#x27;全日本空輸&#x27;, &#x27;全日空&#x27;, &#x27;ANA&#x27;] },
+  { name: &#x27;JR&#x27;,    keywords: [&#x27;旅客鉄道&#x27;, &#x27;新幹線&#x27;, &#x27;JR&#x27;] },
+  { name: &#x27;ホテル&#x27;, keywords: [&#x27;ホテル&#x27;, &#x27;HOTEL&#x27;, &#x27;Hotel&#x27;, &#x27;宿泊&#x27;] },
+  { name: &#x27;タクシー&#x27;, keywords: [&#x27;タクシー&#x27;] },
+];
+
+// 英語月名（航空券・海外系フォーマット用）
+const MON_ABBR = { JAN:1, FEB:2, MAR:3, APR:4, MAY:5, JUN:6, JUL:7, AUG:8, SEP:9, OCT:10, NOV:11, DEC:12 };
+const MON_FULL = { January:1, February:2, March:3, April:4, May:5, June:6,
+                   July:7, August:8, September:9, October:10, November:11, December:12 };
+
+/**
+ * ★処理ログの列（2026-08-10の「カラムを統一する」決定にもとづく）
+ * 他のファイル（締め処理）はこの見出し名で列を探すため、
+ * 並び順を変えても壊れません。列を減らす場合だけご注意ください。
+ */
+const LOG_HEADERS = [
+  &#x27;実行日時&#x27;, &#x27;ファイル名&#x27;, &#x27;発行元&#x27;, &#x27;利用日&#x27;, &#x27;金額&#x27;, &#x27;費用区分&#x27;,
+  &#x27;区間&#x27;, &#x27;運賃&#x27;, &#x27;メモ（摘要）&#x27;, &#x27;突合した予定&#x27;, &#x27;MF登録ID&#x27;, &#x27;状態&#x27;, &#x27;備考&#x27;,
+];
+// =========================================================================
+
+
+/** メイン：トリガーからはこれを呼ぶ */
+function main() {
+  const inFolder = DriveApp.getFolderById(CONFIG.FOLDER_IN);
+  const sheet = getLogSheet_();
+  const files = inFolder.getFiles();
+
+  let ok = 0, warn = 0, err = 0;
+
+  while (files.hasNext()) {
+    const file = files.next();
+    try {
+      const result = processFile_(file);
+      logRow_(sheet, result.row);
+      if (result.status === &#x27;正常&#x27;) { moveTo_(file, CONFIG.FOLDER_DONE, true); ok++; }
+      else if (result.status === &#x27;要確認&#x27;) { moveTo_(file, CONFIG.FOLDER_DONE, true); warn++; }
+      else { moveTo_(file, CONFIG.FOLDER_ERROR, false); err++; }
+    } catch (e) {
+      logRow_(sheet, [now_(), file.getName(), &#x27;&#x27;, &#x27;&#x27;, &#x27;&#x27;, &#x27;&#x27;, &#x27;&#x27;, &#x27;&#x27;, &#x27;&#x27;, &#x27;&#x27;, &#x27;&#x27;, &#x27;エラー&#x27;, String(e)]);
+      moveTo_(file, CONFIG.FOLDER_ERROR, false);
+      err++;
+    }
+  }
+
+  Logger.log(&#x27;完了：正常 %s / 要確認 %s / エラー %s&#x27;, ok, warn, err);
+  if (warn + err &gt; 0) notify_(warn, err);
+}
+
+
+/** 1ファイルの処理 */
+function processFile_(file) {
+  const name = file.getName();
+
+  // ---- ① 判定（発行元・日付・金額） ----
+  const text = extractText_(file);
+  const vendor = detectVendor_(name + &#x27;\n&#x27; + text);
+  const date   = detectDate_(name + &#x27;\n&#x27; + text);
+  const amount = detectAmount_(text) || detectAmountFromName_(name);
+
+  if (!date || !amount) {
+    return {
+      status: &#x27;エラー&#x27;,
+      row: [now_(), name, vendor || &#x27;&#x27;, date ? formatDate_(date) : &#x27;&#x27;, amount || &#x27;&#x27;,
+            &#x27;&#x27;, &#x27;&#x27;, &#x27;&#x27;, &#x27;&#x27;, &#x27;&#x27;, &#x27;&#x27;, &#x27;エラー&#x27;, &#x27;日付または金額を判定できません&#x27;],
+    };
+  }
+
+  // ---- ② カレンダー突合 ----
+  const matched = matchCalendar_(date, vendor);
+  // 区間は「領収書から抽出」を優先し、取れない場合はカレンダーの場所で補完
+  const rawRoute = detectRoute_(text) || matched.route || &#x27;&#x27;;
+  // ★表記ゆれ辞書があれば、区間を正式表記に揃えてから料金を引く
+  const route = normalizeRoute_(rawRoute);
+
+  // ---- ③ 区間料金の引き当て（案②：区間マスタ） ----
+  const fare = route ? lookupFare_(route) : null;
+
+  // ---- ①&#x27; リネーム ----
+  const category = guessCategory_(vendor, matched);
+  const newName = [formatDate_(date), vendor || &#x27;NA&#x27;, amount, category].join(&#x27;_&#x27;) + getExt_(name);
+  file.setName(newName);
+
+  // ---- ④ MF経費へ連携（★運賃・区間もあわせて転記：2026-08-10の決定） ----
+  let mfId = &#x27;&#x27;;
+  if (CONFIG.ENABLE_MF) {
+    mfId = createMfExpense_({ date: date, amount: amount, vendor: vendor,
+                              memo: matched.memo, category: category,
+                              route: route, fare: fare, file: file });
+  }
+
+  const status = matched.candidates &gt; 1 || !matched.memo ? &#x27;要確認&#x27; : &#x27;正常&#x27;;
+  const note = matched.candidates &gt; 1 ? (&#x27;候補が複数：&#x27; + matched.candidateTitles) :
+               (!matched.memo ? &#x27;該当予定なし（摘要は手入力）&#x27; : (fare ? (&#x27;区間マスタ参照:&#x27; + fare) : &#x27;&#x27;));
+
+  return {
+    status: status,
+    row: [
+      now_(), newName, vendor, formatDate_(date), amount, category,
+      route, fare || &#x27;&#x27;, matched.memo || &#x27;&#x27;, matched.candidateTitles || &#x27;&#x27;, mfId, status, note,
+    ],
+  };
+}
+
+
+/**
+ * 区間の表記を正式表記に揃える（例：東京駅→大分空港 ＝ 東京→大分）
+ * 「経費自動化_表記ゆれ辞書.gs」を入れている場合のみ辞書を使い、
+ * 入れていない場合はそのまま返します。
+ */
+function normalizeRoute_(route) {
+  if (!route) return &#x27;&#x27;;
+  if (typeof normalizeTerm_ !== &#x27;function&#x27;) return route;
+
+  const m = String(route).match(/^(.+?)\s*(?:→|-&gt;|〜|~|ー|-)\s*(.+)$/);
+  if (!m) return normalizeTerm_(&#x27;&#x27;, &#x27;地名&#x27;, route);
+  return normalizeTerm_(&#x27;&#x27;, &#x27;地名&#x27;, m[1]) + &#x27;→&#x27; + normalizeTerm_(&#x27;&#x27;, &#x27;地名&#x27;, m[2]);
+}
+
+
+// --------------------------- ①判定 ---------------------------
+
+/**
+ * PDFからテキスト抽出（GoogleドキュメントへOCR変換して読む）
+ * ★共有ドライブ（マイドライブ以外）にも対応するため supportsAllDrives を指定
+ */
+function extractText_(file) {
+  try {
+    if (file.getMimeType() !== MimeType.PDF) return &#x27;&#x27;;
+    const doc = Drive.Files.copy(
+      { title: &#x27;tmp_ocr_&#x27; + file.getName(), mimeType: MimeType.GOOGLE_DOCS },
+      file.getId(),
+      { ocr: true, ocrLanguage: &#x27;ja&#x27;, supportsAllDrives: true, supportsTeamDrives: true });
+    const text = DocumentApp.openById(doc.id).getBody().getText();
+    DriveApp.getFileById(doc.id).setTrashed(true);   // 一時ファイルを削除
+    return text;
+  } catch (e) {
+    Logger.log(&#x27;OCRスキップ: &#x27; + e);
+    return &#x27;&#x27;;
+  }
+}
+
+/**
+ * ★文字の正規化（最重要）
+ * 一部の領収書（JR九州など）は「⽉ ⽇ ⾦ ⼈」といった互換文字を使っており、
+ * 通常の「月 日 金 人」と別コードのため、そのままでは正規表現が一致しない。
+ * NFKC正規化で通常文字に揃えてから判定する。
+ */
+function norm_(t) { return String(t).normalize(&#x27;NFKC&#x27;); }
+
+function detectVendor_(text) {
+  text = norm_(text);
+  for (const v of VENDORS) {
+    if (v.keywords.some(function (k) { return text.indexOf(k) &gt;= 0; })) return v.name;
+  }
+  return &#x27;&#x27;;
+}
+
+/**
+ * 日付の検出：★「発行日」ではなく「利用日（乗車日・搭乗日・チェックイン日）」を優先
+ * カレンダー突合の精度は、この利用日が正しく取れるかで決まる。
+ */
+function detectDate_(text) {
+  text = norm_(text);
+  const mk = function (y, mo, d) { return new Date(Number(y), Number(mo) - 1, Number(d)); };
+  let m;
+
+  // ① 明示ラベル付きの利用日
+  m = text.match(/(?:乗車日|搭乗日|利用日|ご利用日|チェックイン日?)[^0-9]{0,20}(20\d{2})\s?[年\/\-\.]\s?(\d{1,2})\s?[月\/\-\.]\s?(\d{1,2})/);
+  if (m) return mk(m[1], m[2], m[3]);
+
+  // ② 英語表記のチェックイン日（例：Arrival: December 13, 2025）
+  m = text.match(/(?:Arrival|チェックイン)[^A-Za-z0-9]{0,30}(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),\s*(20\d{2})/);
+  if (m) return mk(m[3], MON_FULL[m[1]], m[2]);
+
+  // ③ 航空券の旅程日付（例：03OCT2026）※発行日を拾わないようDEPARTURE以降に限定
+  const dep = text.indexOf(&#x27;DEPARTURE&#x27;);
+  const scope = dep &gt;= 0 ? text.slice(dep) : text;
+  m = scope.match(/(\d{2})(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)(20\d{2})/);
+  if (m) return mk(m[3], MON_ABBR[m[2]], m[1]);
+
+  // ④ 「YYYY年M月D日（曜）」＝旅程表・明細行に多い形式
+  m = text.match(/(20\d{2})[年]\s?(\d{1,2})[月]\s?(\d{1,2})[日]\s*[（(][日月火水木金土]/);
+  if (m) return mk(m[1], m[2], m[3]);
+
+  // ⑤ フォールバック（発行日など）
+  m = text.match(/(20\d{2})[年]\s?(\d{1,2})[月]\s?(\d{1,2})/);
+  if (m) return mk(m[1], m[2], m[3]);
+  m = text.match(/(20\d{2})\/(\d{1,2})\/(\d{1,2})/);
+  if (m) return mk(m[1], m[2], m[3]);
+  return null;
+}
+
+/**
+ * 金額の検出：合計・TOTALの近傍を優先（JPY表記にも対応）
+ * ★近傍に「JPY0（手数料）」等が混在するため、近傍の最大値を採用する
+ */
+function detectAmount_(text) {
+  text = norm_(text);
+  let m = text.match(/(?:合計金額|ご利用金額|合計|TOTAL)([\s\S]{0,120})/);
+  if (m) {
+    const cands = (m[1].match(/(?:JPY|¥|￥)\s?([0-9][0-9,]{2,})/g) || [])
+      .map(function (x) { return Number(x.replace(/[^0-9]/g, &#x27;&#x27;)); })
+      .filter(function (n) { return n &gt; 0; });
+    if (cands.length) return Math.max.apply(null, cands);
+    const plain = m[1].match(/([0-9][0-9,]{2,})\s*円/);
+    if (plain) return Number(plain[1].replace(/,/g, &#x27;&#x27;));
+  }
+  m = text.match(/(?:金額|請求金額|領収金額|お支払[い]?金額)[^0-9]{0,10}(?:JPY|¥|￥)?\s?([0-9][0-9,]{2,})/);
+  if (m) return Number(m[1].replace(/,/g, &#x27;&#x27;));
+  const all = (text.match(/(?:JPY|¥|￥)\s?([0-9][0-9,]{2,})/g) || [])
+    .map(function (s) { return Number(s.replace(/[^0-9]/g, &#x27;&#x27;)); });
+  return all.length ? Math.max.apply(null, all) : null;
+}
+
+/**
+ * 区間の抽出（区間マスタ引き当て・摘要生成に使用）
+ * 領収書から取れない場合は、カレンダーの場所情報で補完する
+ */
+function detectRoute_(text) {
+  text = norm_(text);
+  let m = text.match(/利用区間[\s\S]{0,60}?([一-龥ぁ-んァ-ヶA-Za-z]{2,10})\s+([一-龥ぁ-んァ-ヶA-Za-z]{2,10})\s+おとな/);
+  if (m) return m[1] + &#x27;→&#x27; + m[2];
+  m = text.match(/(\d{2}:\d{2})\s*([一-龥]{2,6}(?:\([^)]+\))?)[\s\S]{0,80}?(\d{2}:\d{2})\s*([一-龥]{2,6}(?:\s?\([^)]+\))?)/);
+  if (m) return m[2] + &#x27;→&#x27; + m[4];
+  m = text.match(/DEPARTURE\s*\[\s*1\s*\][\s\S]{0,40}?([A-Z]{3,12})[\s\S]{0,200}?ARRIVAL[\s\S]{0,60}?([A-Z]{3,12}\s*\(?[A-Z]*\)?)/);
+  if (m) return m[1].trim() + &#x27;→&#x27; + m[2].trim();
+  return &#x27;&#x27;;
+}
+
+function detectAmountFromName_(name) {
+  const m = name.match(/[_\-](\d{3,7})[_\-\.]/);
+  return m ? Number(m[1]) : null;
+}
+
+
+// --------------------------- ②カレンダー突合 ---------------------------
+
+function matchCalendar_(date, vendor) {
+  const cal = CONFIG.CALENDAR_ID === &#x27;primary&#x27;
+    ? CalendarApp.getDefaultCalendar()
+    : CalendarApp.getCalendarById(CONFIG.CALENDAR_ID);
+  if (!cal) return { memo: &#x27;&#x27;, candidates: 0, route: &#x27;&#x27;, candidateTitles: &#x27;&#x27; };
+
+  const start = new Date(date); start.setHours(0, 0, 0, 0);
+  const end   = new Date(date); end.setHours(23, 59, 59, 0);
+  let events = cal.getEvents(start, end);
+
+  // 私用・終日予定は除外
+  events = events.filter(function (e) { return !e.isAllDayEvent(); });
+  if (events.length === 0) return { memo: &#x27;&#x27;, candidates: 0, route: &#x27;&#x27;, candidateTitles: &#x27;&#x27; };
+
+  // 区分に応じて優先度を付ける
+  let picked;
+  if (vendor === &#x27;ホテル&#x27; || vendor === &#x27;JAL&#x27; || vendor === &#x27;ANA&#x27; || vendor === &#x27;JR&#x27; || vendor === &#x27;スカイマーク&#x27;) {
+    picked = events.filter(function (e) { return e.getLocation(); })[0] || events[0];   // 場所ありを優先
+  } else {
+    picked = events.filter(function (e) { return e.getStartTime().getHours() &gt;= 18 &amp;&amp; e.getGuestList().length &gt;= 2; })[0]
+             || events[0];   // 会食＝夜間＋ゲスト2名以上
+  }
+
+  const route = picked.getLocation() || &#x27;&#x27;;
+  const memo = [picked.getTitle(), route ? (&#x27;（&#x27; + route + &#x27;）&#x27;) : &#x27;&#x27;].join(&#x27;&#x27;) + &#x27;のため&#x27;;
+  return {
+    memo: memo,
+    route: route,
+    candidates: events.length,
+    candidateTitles: events.map(function (e) { return e.getTitle(); }).join(&#x27; / &#x27;),
+  };
+}
+
+function guessCategory_(vendor, matched) {
+  if ([&#x27;JAL&#x27;, &#x27;ANA&#x27;, &#x27;スカイマーク&#x27;, &#x27;スターフライヤー&#x27;, &#x27;ソラシド&#x27;, &#x27;ピーチ&#x27;,
+       &#x27;ジェットスター&#x27;, &#x27;JR&#x27;, &#x27;タクシー&#x27;].indexOf(vendor) &gt;= 0) return &#x27;交通費&#x27;;
+  if (vendor === &#x27;ホテル&#x27;) return &#x27;宿泊費&#x27;;
+  if (matched &amp;&amp; matched.memo &amp;&amp; /会食|懇親|接待/.test(matched.memo)) return &#x27;接待交際費&#x27;;
+  return &#x27;雑費&#x27;;
+}
+
+
+// --------------------------- ③区間料金（案②：マスタ引き当て） ---------------------------
+
+function lookupFare_(route) {
+  const ss = SpreadsheetApp.openById(CONFIG.LOG_SHEET_ID);
+  const sh = ss.getSheetByName(CONFIG.FARE_SHEET_NAME);
+  if (!sh || sh.getLastRow() &lt; 2) return null;
+  const rows = sh.getRange(2, 1, sh.getLastRow() - 1, 4).getValues();  // 出発/到着/交通機関/片道金額
+  const norm = String(route).replace(/\s/g, &#x27;&#x27;);
+  for (const r of rows) {
+    const from = String(r[0]).replace(/\s/g, &#x27;&#x27;), to = String(r[1]).replace(/\s/g, &#x27;&#x27;);
+    if (from &amp;&amp; to &amp;&amp; norm.indexOf(from) &gt;= 0 &amp;&amp; norm.indexOf(to) &gt;= 0) return r[3];
+  }
+  return null;
+}
+
+
+// --------------------------- ④MFクラウド経費 連携 ---------------------------
+
+/**
+ * ★API契約・office_id 確定後に有効化（CONFIG.ENABLE_MF = true）
+ * 認証：OAuth2.0。トークンはスクリプトプロパティに保管し、コードに直書きしない。
+ */
+function createMfExpense_(params) {
+  const token = PropertiesService.getScriptProperties().getProperty(&#x27;MF_ACCESS_TOKEN&#x27;);
+  const officeId = PropertiesService.getScriptProperties().getProperty(&#x27;MF_OFFICE_ID&#x27;);
+  if (!token || !officeId) {
+    Logger.log(&#x27;MFトークン未設定のためスキップ&#x27;);
+    return &#x27;&#x27;;
+  }
+  // ※エンドポイント・パラメータ名は公式APIリファレンスに合わせて確定させること
+  //   https://expense.moneyforward.com/api/index.html
+  //
+  // ★2026-08-10の決定「運賃・メモ欄の情報もあわせてMF側へ転記」に対応
+  //   区間と運賃は摘要（remark）にまとめて入れています。
+  //   MF側に区間用の項目がある場合は、下の payload に個別項目として移してください。
+  const remark = buildMfRemark_(params);
+
+  try {
+    const res = UrlFetchApp.fetch(&#x27;https://expense.moneyforward.com/api/external/v1/ex_transactions&#x27;, {
+      method: &#x27;post&#x27;,
+      contentType: &#x27;application/json&#x27;,
+      headers: { Authorization: &#x27;Bearer &#x27; + token, &#x27;X-Office-Id&#x27;: officeId },
+      payload: JSON.stringify({
+        recognized_at: formatDateIso_(params.date),
+        value: params.amount,
+        ex_item_name: params.category,
+        remark: remark,
+      }),
+      muteHttpExceptions: true,
+    });
+    const code = res.getResponseCode();
+    if (code &gt;= 200 &amp;&amp; code &lt; 300) {
+      const json = JSON.parse(res.getContentText());
+      return json.id || &#x27;&#x27;;
+    }
+    Logger.log(&#x27;MF連携エラー: &#x27; + code + &#x27; &#x27; + res.getContentText());
+    return &#x27;&#x27;;
+  } catch (e) {
+    Logger.log(&#x27;MF連携例外: &#x27; + e);
+    return &#x27;&#x27;;
+  }
+}
+
+
+/**
+ * MFへ送る摘要文を組み立てる
+ * 「メモ欄は現行の記入方法を踏襲する」決定に合わせ、
+ * 貴社の書式サンプルをいただき次第、この関数だけを直せば全体に反映されます。
+ *
+ * 例）A社訪問（東京→大分）のため　区間:東京→大分　運賃:31,000円
+ */
+function buildMfRemark_(params) {
+  const parts = [];
+  if (params.memo)  parts.push(params.memo);
+  if (params.route) parts.push(&#x27;区間:&#x27; + params.route);
+  if (params.fare)  parts.push(&#x27;運賃:&#x27; + Number(params.fare).toLocaleString(&#x27;ja-JP&#x27;) + &#x27;円&#x27;);
+  return parts.join(&#x27;　&#x27;);
+}
+
+
+// --------------------------- ⑤ログ・通知・ユーティリティ ---------------------------
+
+function getLogSheet_() {
+  const ss = SpreadsheetApp.openById(CONFIG.LOG_SHEET_ID);
+  let sh = ss.getSheetByName(CONFIG.LOG_SHEET_NAME);
+  if (!sh) {
+    sh = ss.insertSheet(CONFIG.LOG_SHEET_NAME);
+    sh.appendRow(LOG_HEADERS);
+    sh.getRange(1, 1, 1, LOG_HEADERS.length).setFontWeight(&#x27;bold&#x27;);
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+
+/**
+ * ログを1行追記する
+ * 列数がヘッダーと合わない場合は自動で補正します（列を追加したときの取りこぼし防止）
+ */
+function logRow_(sheet, row) {
+  const fixed = row.slice(0, LOG_HEADERS.length);
+  while (fixed.length &lt; LOG_HEADERS.length) fixed.push(&#x27;&#x27;);
+  sheet.appendRow(fixed);
+}
+
+function moveTo_(file, folderId, useYearMonth) {
+  let target = DriveApp.getFolderById(folderId);
+  if (useYearMonth) {
+    const ym = Utilities.formatDate(new Date(), &#x27;Asia/Tokyo&#x27;, &#x27;yyyy-MM&#x27;);
+    const it = target.getFoldersByName(ym);
+    target = it.hasNext() ? it.next() : target.createFolder(ym);
+  }
+  file.moveTo(target);
+}
+
+function notify_(warn, err) {
+  const subject = `[経費自動化] 要確認 ${warn}件 / エラー ${err}件`;
+  const body = &#x27;ログをご確認ください：\n&#x27; +
+    &#x27;https://docs.google.com/spreadsheets/d/&#x27; + CONFIG.LOG_SHEET_ID;
+  MailApp.sendEmail(CONFIG.NOTIFY_EMAIL, subject, body);
+}
+
+function now_() { return Utilities.formatDate(new Date(), &#x27;Asia/Tokyo&#x27;, &#x27;yyyy-MM-dd HH:mm&#x27;); }
+function formatDate_(d) { return Utilities.formatDate(d, &#x27;Asia/Tokyo&#x27;, &#x27;yyyyMMdd&#x27;); }
+function formatDateIso_(d) { return Utilities.formatDate(d, &#x27;Asia/Tokyo&#x27;, &#x27;yyyy-MM-dd&#x27;); }
+function getExt_(name) { const m = name.match(/\.[^.]+$/); return m ? m[0] : &#x27;.pdf&#x27;; }
+
+
+// --------------------------- トリガー設定 ---------------------------
+
+/** 毎月21日 8時台に自動実行するトリガーを登録（初回だけ手動実行） */
+function setupMonthlyTrigger() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === &#x27;main&#x27;) ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger(&#x27;main&#x27;).timeBased().onMonthDay(21).atHour(8).create();
+  Logger.log(&#x27;毎月21日 8時台の自動実行を登録しました&#x27;);
+}
+</pre>
+      </details>
+      <details class="src">
+        <summary><span class="fn">締め処理</span><span class="pill req">必須</span><span class="sz">387行 / 約14KB</span></summary>
+        <p class="srcdesc">締め区間の計算・月3回の自動実行・申請漏れ検出・命名規則の点検</p>
+        <div class="srcbar"><span class="srcfile">02_経費自動化_締め処理.gs</span><button type="button" data-copy-src="src-close">全文をコピー</button></div>
+        <pre class="code srcpre" id="src-close">/**
+ * 経費申請効率化｜締め処理（20-21日締め・月3回実行）
+ * ------------------------------------------------------------------
+ * 2026-08-10の定例で決定した内容を実装したものです。
+ *
+ *  ・締め区間：前月21日 〜 当月20日
+ *  ・実行タイミング（月3回）
+ *      ① 21日 深夜1時台 … 締め直後。区間の内容をまとめて登録
+ *      ② 翌月 1日  8時台 … 遅れて届いた領収書の拾い直し
+ *      ③ 翌月 8日  8時台 … 申請期限前の最終チェック
+ *  ・申請漏れは「利用日」基準で、本来の締め区間に登録されます
+ *  ・カレンダーに出張予定があるのに領収書が無いものを検出してお知らせします
+ *  ・命名規則に合わない予定（毎月の定常訪問など）をリスト化します
+ *
+ * 依存：経費自動化_メイン.gs（CONFIG / main / getLogSheet_ ほか）
+ * 　　　経費自動化_区間料金と命名規則.gs（parseCalendarTitle_）※無くても動きます
+ *
+ * 設計：デジライズ ／ 実装・カスタマイズ：貴社
+ * ------------------------------------------------------------------
+ */
+
+// ========================= CONFIG（ここだけ編集） =========================
+const CLOSING_CONFIG = {
+  // 締め日。この日で1つの区間が終わる（前月21日 〜 当月20日）
+  CLOSING_DAY: 20,
+
+  // 実行タイミング（日, 時）。atHour(1) は 1:00〜2:00 の間に実行されます
+  RUNS: [
+    { day: 21, hour: 1, label: &#x27;①締め直後&#x27; },
+    { day: 1,  hour: 8, label: &#x27;②拾い直し&#x27; },
+    { day: 8,  hour: 8, label: &#x27;③最終チェック&#x27; },
+  ],
+
+  // 命名規則チェックで何ヶ月ぶん遡るか
+  LOOKBACK_MONTHS: 2,
+
+  // カレンダーの「移動」を表すプレフィックス（例：move///東京→大分）
+  MOVE_PREFIX: &#x27;move&#x27;,
+
+  // レポートの出力先シート名（CONFIG.LOG_SHEET_ID のブック内に自動作成）
+  REPORT_SHEET_NAME: &#x27;締め処理レポート&#x27;,
+  NAMING_SHEET_NAME: &#x27;命名規則チェック&#x27;,
+
+  // 申請漏れ・要確認があったときにメールで知らせるか
+  NOTIFY: true,
+};
+// =========================================================================
+
+
+/**
+ * 【トリガーからはこれを呼ぶ】締め処理の本体
+ * 3つのトリガーすべてがこの関数を呼び、実行日から対象区間を自動判定します。
+ */
+function runClosingBatch() {
+  const today = new Date();
+  const period = currentClosingPeriod_(today);
+  const runLabel = runLabelForToday_(today);
+
+  Logger.log(&#x27;締め処理を開始します：%s（対象区間 %s）&#x27;, runLabel, period.label);
+
+  // ---- ① 投入フォルダの領収書を処理（利用日基準で登録される） ----
+  main();
+
+  // ---- ② カレンダーの出張予定と、処理済み領収書を突き合わせる ----
+  const plans    = collectTripPlans_(period.from, period.to);
+  const receipts = readProcessedReceipts_(period.from, period.to);
+  const missing  = findMissingReceipts_(plans, receipts);
+
+  // ---- ③ レポートに書き出す ----
+  writeClosingReport_(period, runLabel, plans, receipts, missing);
+
+  // ---- ④ 申請漏れがあれば知らせる ----
+  if (missing.length &gt; 0 &amp;&amp; CLOSING_CONFIG.NOTIFY) {
+    notifyMissing_(period, runLabel, missing);
+  }
+
+  Logger.log(&#x27;締め処理が終わりました：出張予定 %s件 ／ 領収書 %s件 ／ 未提出 %s件&#x27;,
+    plans.length, receipts.length, missing.length);
+
+  return { period: period, run: runLabel, plans: plans.length,
+           receipts: receipts.length, missing: missing.length };
+}
+
+
+// --------------------------- 締め区間の算出 ---------------------------
+
+/**
+ * 実行日から、処理すべき締め区間を返す
+ *
+ *   21日以降に実行  → 当月20日で終わる区間（＝ちょうど締まったばかりの区間）
+ *   20日以前に実行  → 前月20日で終わる区間（＝前回締まった区間の拾い直し）
+ *
+ * 例）締め区間が 7/21〜8/20 のとき
+ *     8/21 実行 → 7/21〜8/20   9/1 実行 → 7/21〜8/20   9/8 実行 → 7/21〜8/20
+ */
+function currentClosingPeriod_(today) {
+  const d = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const closingDay = CLOSING_CONFIG.CLOSING_DAY;
+
+  // 区間の終わり（締め日）が属する月を決める
+  const endMonthOffset = (d.getDate() &gt; closingDay) ? 0 : -1;
+  const to   = new Date(d.getFullYear(), d.getMonth() + endMonthOffset, closingDay);
+  const from = new Date(to.getFullYear(), to.getMonth() - 1, closingDay + 1);
+
+  return {
+    from: from,
+    to:   to,
+    label: formatDateIso_(from) + &#x27; 〜 &#x27; + formatDateIso_(to),
+  };
+}
+
+
+/** 実行日から、3回のうちどのタイミングかを判定する */
+function runLabelForToday_(today) {
+  const day = today.getDate();
+  const hit = CLOSING_CONFIG.RUNS.filter(function (r) { return r.day === day; })[0];
+  return hit ? hit.label : &#x27;手動実行&#x27;;
+}
+
+
+// --------------------------- 出張予定の収集 ---------------------------
+
+/**
+ * 対象期間のカレンダーから「移動（出張）」の予定を集める
+ * 命名規則： move///東京→大分
+ */
+function collectTripPlans_(from, to) {
+  const cal = CalendarApp.getCalendarById(CONFIG.CALENDAR_ID);
+  if (!cal) throw new Error(&#x27;カレンダーが見つかりません：&#x27; + CONFIG.CALENDAR_ID);
+
+  // 終了日も含めるため、翌日の0時までを範囲にする
+  const until = new Date(to.getFullYear(), to.getMonth(), to.getDate() + 1);
+  const events = cal.getEvents(from, until);
+
+  const plans = [];
+  events.forEach(function (ev) {
+    const title = String(ev.getTitle() || &#x27;&#x27;).normalize(&#x27;NFKC&#x27;).trim();
+    const parsed = parseTitleSafe_(title);
+    if (!parsed || parsed.prefix !== CLOSING_CONFIG.MOVE_PREFIX) return;
+
+    plans.push({
+      date:  ev.getStartTime(),
+      dateStr: formatDateIso_(ev.getStartTime()),
+      title: title,
+      detail: parsed.detail,
+      from: parsed.from || &#x27;&#x27;,
+      to:   parsed.to   || &#x27;&#x27;,
+    });
+  });
+
+  return plans;
+}
+
+
+/**
+ * 予定タイトルを解析する
+ * 区間料金ファイル（経費自動化_区間料金と命名規則.gs）があればそちらを使い、
+ * 無い場合はこのファイル内の簡易版で解析します。
+ */
+function parseTitleSafe_(title) {
+  if (typeof parseCalendarTitle_ === &#x27;function&#x27;) {
+    return parseCalendarTitle_(title);
+  }
+  // 簡易版： prefix///詳細
+  const m = title.match(/^([a-zA-Z]+)\s*\/\/\/\s*(.*)$/);
+  if (!m) return null;
+  const detail = m[2].trim();
+  const r = detail.match(/^(.+?)\s*(?:→|-&gt;|〜|~|ー|-)\s*(.+)$/);
+  return {
+    prefix: m[1].toLowerCase(),
+    detail: detail,
+    from: r ? r[1].trim() : &#x27;&#x27;,
+    to:   r ? r[2].trim() : &#x27;&#x27;,
+  };
+}
+
+
+// --------------------------- 領収書側の収集 ---------------------------
+
+/**
+ * 処理ログから、対象期間に「利用日」が入っている領収書を集める
+ *
+ * 列は位置ではなく「見出し名」で探します。
+ * そのため、メイン側で列を追加・並べ替えしてもこの処理は壊れません。
+ */
+function readProcessedReceipts_(from, to) {
+  const sheet = getLogSheet_();
+  const values = sheet.getDataRange().getValues();
+  if (values.length &lt; 2) return [];
+
+  const col = headerIndex_(values[0]);
+  if (col[&#x27;利用日&#x27;] === undefined) {
+    throw new Error(&#x27;処理ログに「利用日」の列が見つかりません。メイン側のLOG_HEADERSをご確認ください&#x27;);
+  }
+
+  const fromStr = formatDateIso_(from);
+  const toStr   = formatDateIso_(to);
+
+  const pick = function (row, name) {
+    return col[name] === undefined ? &#x27;&#x27; : row[col[name]];
+  };
+
+  const receipts = [];
+  for (let i = 1; i &lt; values.length; i++) {
+    const row = values[i];
+    const used = normalizeLogDate_(pick(row, &#x27;利用日&#x27;));
+    if (!used) continue;
+    if (used &lt; fromStr || used &gt; toStr) continue;
+
+    receipts.push({
+      dateStr: used,
+      file:    String(pick(row, &#x27;ファイル名&#x27;) || &#x27;&#x27;),
+      vendor:  String(pick(row, &#x27;発行元&#x27;) || &#x27;&#x27;),
+      amount:  pick(row, &#x27;金額&#x27;),
+      route:   String(pick(row, &#x27;区間&#x27;) || &#x27;&#x27;),
+      fare:    pick(row, &#x27;運賃&#x27;),
+      status:  String(pick(row, &#x27;状態&#x27;) || &#x27;&#x27;),
+    });
+  }
+  return receipts;
+}
+
+
+/** 見出し行から「列名 → 列番号（0始まり）」の対応を作る */
+function headerIndex_(headerRow) {
+  const map = {};
+  headerRow.forEach(function (h, i) {
+    const key = String(h || &#x27;&#x27;).normalize(&#x27;NFKC&#x27;).trim();
+    if (key &amp;&amp; map[key] === undefined) map[key] = i;
+  });
+  return map;
+}
+
+
+/** ログの日付セルを yyyy-MM-dd の文字列に揃える（日付型・文字列型の両方に対応） */
+function normalizeLogDate_(v) {
+  if (!v) return &#x27;&#x27;;
+  if (Object.prototype.toString.call(v) === &#x27;[object Date]&#x27;) return formatDateIso_(v);
+  const s = String(v).normalize(&#x27;NFKC&#x27;).trim();
+  const m = s.match(/(\d{4})\D{0,2}(\d{1,2})\D{0,2}(\d{1,2})/);
+  if (!m) return &#x27;&#x27;;
+  return m[1] + &#x27;-&#x27; + (&#x27;0&#x27; + m[2]).slice(-2) + &#x27;-&#x27; + (&#x27;0&#x27; + m[3]).slice(-2);
+}
+
+
+// --------------------------- 申請漏れの検出 ---------------------------
+
+/**
+ * 出張予定があるのに、対応する領収書が見つからないものを抽出する
+ * 突合のキー：利用日（同じ日に領収書が1件でもあれば「提出済み」とみなす）
+ */
+function findMissingReceipts_(plans, receipts) {
+  const haveDates = {};
+  receipts.forEach(function (r) { haveDates[r.dateStr] = true; });
+
+  return plans.filter(function (p) { return !haveDates[p.dateStr]; });
+}
+
+
+// --------------------------- レポート出力 ---------------------------
+
+/** 締め処理の結果をシートに追記する */
+function writeClosingReport_(period, runLabel, plans, receipts, missing) {
+  const sheet = getOrCreateSheet_(CLOSING_CONFIG.REPORT_SHEET_NAME, [
+    &#x27;実行日時&#x27;, &#x27;実行タイミング&#x27;, &#x27;対象区間&#x27;, &#x27;出張予定&#x27;, &#x27;領収書&#x27;, &#x27;未提出&#x27;, &#x27;未提出の内訳&#x27;,
+  ]);
+
+  const detail = missing.map(function (m) {
+    return m.dateStr + &#x27; &#x27; + (m.detail || m.title);
+  }).join(&#x27; / &#x27;);
+
+  sheet.appendRow([
+    now_(), runLabel, period.label,
+    plans.length, receipts.length, missing.length, detail,
+  ]);
+}
+
+
+/** ブック内のシートを取得（無ければ見出し付きで作成） */
+function getOrCreateSheet_(name, headers) {
+  const ss = SpreadsheetApp.openById(CONFIG.LOG_SHEET_ID);
+  let sheet = ss.getSheetByName(name);
+  if (!sheet) {
+    sheet = ss.insertSheet(name);
+    sheet.appendRow(headers);
+    sheet.getRange(1, 1, 1, headers.length).setFontWeight(&#x27;bold&#x27;);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+
+/** 申請漏れをメールで知らせる */
+function notifyMissing_(period, runLabel, missing) {
+  const lines = missing.map(function (m) {
+    return &#x27;・&#x27; + m.dateStr + &#x27;　&#x27; + (m.detail || m.title);
+  }).join(&#x27;\n&#x27;);
+
+  const body =
+    &#x27;経費申請の締め処理（&#x27; + runLabel + &#x27;）で、領収書が見つからない出張予定がありました。\n\n&#x27; +
+    &#x27;対象区間：&#x27; + period.label + &#x27;\n&#x27; +
+    &#x27;未提出：&#x27; + missing.length + &#x27;件\n\n&#x27; +
+    lines + &#x27;\n\n&#x27; +
+    &#x27;ログ：https://docs.google.com/spreadsheets/d/&#x27; + CONFIG.LOG_SHEET_ID;
+
+  MailApp.sendEmail(CONFIG.NOTIFY_EMAIL,
+    &#x27;[経費] 領収書が未提出の出張が&#x27; + missing.length + &#x27;件あります（&#x27; + period.label + &#x27;）&#x27;,
+    body);
+}
+
+
+// --------------------- 命名規則に合わない予定の検出 ---------------------
+
+/**
+ * 過去◯ヶ月のカレンダーを見て、命名規則に合わない予定をリスト化する
+ * 毎月の定常訪問など「ルール外だが繰り返し出てくるもの」を見つける用途です。
+ * 繰り返し回数の多い順に並びます。
+ */
+function scanCalendarNaming() {
+  const cal = CalendarApp.getCalendarById(CONFIG.CALENDAR_ID);
+  if (!cal) throw new Error(&#x27;カレンダーが見つかりません：&#x27; + CONFIG.CALENDAR_ID);
+
+  const to = new Date();
+  const from = new Date(to.getFullYear(), to.getMonth() - CLOSING_CONFIG.LOOKBACK_MONTHS, to.getDate());
+  const events = cal.getEvents(from, to);
+
+  const counts = {};   // タイトル → { count, lastDate }
+  events.forEach(function (ev) {
+    const title = String(ev.getTitle() || &#x27;&#x27;).normalize(&#x27;NFKC&#x27;).trim();
+    if (!title) return;
+    if (parseTitleSafe_(title)) return;          // 規則に合っているものは対象外
+
+    if (!counts[title]) counts[title] = { count: 0, last: &#x27;&#x27; };
+    counts[title].count++;
+    counts[title].last = formatDateIso_(ev.getStartTime());
+  });
+
+  const rows = Object.keys(counts).map(function (t) {
+    return [t, counts[t].count, counts[t].last];
+  }).sort(function (a, b) { return b[1] - a[1]; });
+
+  const sheet = getOrCreateSheet_(CLOSING_CONFIG.NAMING_SHEET_NAME,
+    [&#x27;予定タイトル&#x27;, &#x27;出現回数&#x27;, &#x27;最終出現日&#x27;, &#x27;対応（規則に合わせる／対象外にする）&#x27;]);
+  sheet.getRange(2, 1, Math.max(sheet.getLastRow() - 1, 1), 4).clearContent();
+  if (rows.length &gt; 0) sheet.getRange(2, 1, rows.length, 3).setValues(rows);
+
+  Logger.log(&#x27;命名規則に合わない予定：%s種類（過去%sヶ月）&#x27;, rows.length, CLOSING_CONFIG.LOOKBACK_MONTHS);
+  return rows;
+}
+
+
+// --------------------------- トリガー設定 ---------------------------
+
+/** 月3回の締め処理トリガーを登録する（初回だけ手動で実行してください） */
+function setupClosingTriggers() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === &#x27;runClosingBatch&#x27;) ScriptApp.deleteTrigger(t);
+  });
+
+  CLOSING_CONFIG.RUNS.forEach(function (r) {
+    ScriptApp.newTrigger(&#x27;runClosingBatch&#x27;)
+      .timeBased().onMonthDay(r.day).atHour(r.hour).create();
+    Logger.log(&#x27;登録：毎月%s日 %s時台（%s）&#x27;, r.day, r.hour, r.label);
+  });
+
+  Logger.log(&#x27;締め処理のトリガーを%s件登録しました&#x27;, CLOSING_CONFIG.RUNS.length);
+}
+
+
+// --------------------------- 動作確認用 ---------------------------
+
+/**
+ * 【APIキー不要・すぐ動きます】締め区間の計算が正しいかを確認する
+ * 実行後、ログに「実行日 → 対象区間」の一覧が出ます。
+ */
+function testClosingPeriod_() {
+  const samples = [
+    &#x27;2026-08-20&#x27;, &#x27;2026-08-21&#x27;, &#x27;2026-08-31&#x27;,
+    &#x27;2026-09-01&#x27;, &#x27;2026-09-08&#x27;, &#x27;2026-09-20&#x27;, &#x27;2026-09-21&#x27;,
+  ];
+  samples.forEach(function (s) {
+    const parts = s.split(&#x27;-&#x27;);
+    const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    const p = currentClosingPeriod_(d);
+    Logger.log(&#x27;%s（%s）→ 対象区間 %s&#x27;, s, runLabelForToday_(d), p.label);
+  });
+}
+</pre>
+      </details>
+      <details class="src">
+        <summary><span class="fn">表記ゆれ辞書</span><span class="pill rec">推奨</span><span class="sz">267行 / 約10KB</span></summary>
+        <p class="srcdesc">表記ゆれの吸収・辞書の追記候補の洗い出し・出張かどうかの確認</p>
+        <div class="srcbar"><span class="srcfile">03_経費自動化_表記ゆれ辞書.gs</span><button type="button" data-copy-src="src-dict">全文をコピー</button></div>
+        <pre class="code srcpre" id="src-dict">/**
+ * 経費申請効率化｜表記ゆれ辞書と出張確認の通知
+ * ------------------------------------------------------------------
+ * 2026-08-10の定例で決定した内容を実装したものです。
+ *
+ *  ・表記ゆれを「個人別」に吸収する（例：東京駅 / TOKYO / 東京 → 東京）
+ *  ・辞書はスプレッドシートで管理し、経理の方が画面から追記できます
+ *  ・辞書に無い表記を自動で洗い出し、追記候補としてシートに出します
+ *  ・出張かどうか判断できない予定は、本人に確認を送ります
+ *
+ * 依存：経費自動化_メイン.gs（CONFIG / getOrCreateSheet_ ほか）
+ *
+ * 設計：デジライズ ／ 実装・カスタマイズ：貴社
+ * ------------------------------------------------------------------
+ */
+
+// ========================= CONFIG（ここだけ編集） =========================
+const DICT_CONFIG = {
+  // 辞書シート名（CONFIG.LOG_SHEET_ID のブック内）
+  DICT_SHEET_NAME: &#x27;表記辞書&#x27;,
+  CANDIDATE_SHEET_NAME: &#x27;辞書の追記候補&#x27;,
+
+  // 確認の送り方： &#x27;mail&#x27;（既定） または &#x27;chat&#x27;（Google Chat の Webhook）
+  NOTIFY_METHOD: &#x27;mail&#x27;,
+
+  // NOTIFY_METHOD が &#x27;chat&#x27; のときだけ使います。
+  // ★URLはコードに直接書かず、スクリプトプロパティ CHAT_WEBHOOK_URL に保存してください
+  CHAT_WEBHOOK_PROPERTY: &#x27;CHAT_WEBHOOK_URL&#x27;,
+
+  // 確認対象にする期間（何日前まで遡って確認するか）
+  CONFIRM_LOOKBACK_DAYS: 35,
+};
+// =========================================================================
+
+
+/**
+ * 辞書シートの列構成
+ *   A 担当者      … 空欄なら全員に適用される共通ルール
+ *   B 種別        … 地名 / 取引先 / 予定タイトル
+ *   C 入力された表記 … 実際にカレンダーや領収書に出てくる書き方
+ *   D 正式表記     … これに揃える
+ *   E 備考
+ */
+const DICT_HEADERS = [&#x27;担当者&#x27;, &#x27;種別&#x27;, &#x27;入力された表記&#x27;, &#x27;正式表記&#x27;, &#x27;備考&#x27;];
+
+
+// --------------------------- 辞書の読み込み ---------------------------
+
+/**
+ * 読み込んだ辞書を1回の実行中だけ保持する置き場
+ * 領収書1件ごとにシートを読み直すと遅くなるため、初回だけ読んで使い回します。
+ */
+let DICT_CACHE_ = null;
+
+
+/**
+ * 辞書をシートから読み込み、引き当て用のマップにする
+ * キー： 担当者 + &#x27;\t&#x27; + 種別 + &#x27;\t&#x27; + 入力された表記（すべて正規化済み）
+ *
+ * @param {boolean} force 辞書を編集した直後など、読み直したいときだけ true
+ */
+function loadDict_(force) {
+  if (DICT_CACHE_ &amp;&amp; !force) return DICT_CACHE_;
+
+  const sheet = getOrCreateSheet_(DICT_CONFIG.DICT_SHEET_NAME, DICT_HEADERS);
+  const values = sheet.getDataRange().getValues();
+
+  const map = {};
+  for (let i = 1; i &lt; values.length; i++) {
+    const person = normKey_(values[i][0]);
+    const kind   = normKey_(values[i][1]);
+    const raw    = normKey_(values[i][2]);
+    const formal = String(values[i][3] || &#x27;&#x27;).trim();
+    if (!raw || !formal) continue;
+    map[person + &#x27;\t&#x27; + kind + &#x27;\t&#x27; + raw] = formal;
+  }
+
+  DICT_CACHE_ = map;
+  return map;
+}
+
+
+/** 引き当て用の正規化：全角半角を揃え、空白と記号のゆれを吸収する */
+function normKey_(v) {
+  return String(v || &#x27;&#x27;)
+    .normalize(&#x27;NFKC&#x27;)
+    .toLowerCase()
+    .replace(/[\s　]/g, &#x27;&#x27;)
+    .replace(/[（）()「」『』【】]/g, &#x27;&#x27;)
+    .trim();
+}
+
+
+/**
+ * 表記を正式表記に揃える
+ * 優先順： ①本人の個別ルール → ②全員共通ルール → ③そのまま返す
+ *
+ * @param {string} person 担当者名（不明なら空文字）
+ * @param {string} kind   &#x27;地名&#x27; / &#x27;取引先&#x27; / &#x27;予定タイトル&#x27;
+ * @param {string} raw    実際に入力されていた表記
+ * @param {Object} dict   loadDict_() の戻り値（省略時は都度読み込み）
+ */
+function normalizeTerm_(person, kind, raw, dict) {
+  const d = dict || loadDict_();
+  const k = normKey_(kind);
+  const r = normKey_(raw);
+  if (!r) return &#x27;&#x27;;
+
+  const personal = d[normKey_(person) + &#x27;\t&#x27; + k + &#x27;\t&#x27; + r];
+  if (personal) return personal;
+
+  const common = d[&#x27;\t&#x27; + k + &#x27;\t&#x27; + r];
+  if (common) return common;
+
+  return String(raw).normalize(&#x27;NFKC&#x27;).trim();
+}
+
+
+// --------------------------- 追記候補の洗い出し ---------------------------
+
+/**
+ * カレンダーを見て、辞書に無い地名を洗い出す
+ * 出現回数の多い順にシートへ書き出すので、上から埋めていけば辞書が育ちます。
+ */
+function suggestDictEntries() {
+  const cal = CalendarApp.getCalendarById(CONFIG.CALENDAR_ID);
+  if (!cal) throw new Error(&#x27;カレンダーが見つかりません：&#x27; + CONFIG.CALENDAR_ID);
+
+  const to = new Date();
+  const from = new Date(to.getFullYear(), to.getMonth(), to.getDate() - DICT_CONFIG.CONFIRM_LOOKBACK_DAYS);
+  const events = cal.getEvents(from, to);
+  const dict = loadDict_();
+
+  const counts = {};
+  events.forEach(function (ev) {
+    const title = String(ev.getTitle() || &#x27;&#x27;).normalize(&#x27;NFKC&#x27;).trim();
+    const parsed = (typeof parseTitleSafe_ === &#x27;function&#x27;) ? parseTitleSafe_(title) : null;
+    if (!parsed || parsed.prefix !== &#x27;move&#x27;) return;
+
+    [parsed.from, parsed.to].forEach(function (place) {
+      if (!place) return;
+      // 辞書に既にあるものは候補から外す
+      const key = &#x27;\t&#x27; + normKey_(&#x27;地名&#x27;) + &#x27;\t&#x27; + normKey_(place);
+      if (dict[key]) return;
+      counts[place] = (counts[place] || 0) + 1;
+    });
+  });
+
+  const rows = Object.keys(counts)
+    .map(function (p) { return [&#x27;&#x27;, &#x27;地名&#x27;, p, &#x27;&#x27;, &#x27;出現&#x27; + counts[p] + &#x27;回&#x27;]; })
+    .sort(function (a, b) { return counts[b[2]] - counts[a[2]]; });
+
+  const sheet = getOrCreateSheet_(DICT_CONFIG.CANDIDATE_SHEET_NAME, DICT_HEADERS);
+  const last = sheet.getLastRow();
+  if (last &gt; 1) sheet.getRange(2, 1, last - 1, DICT_HEADERS.length).clearContent();
+  if (rows.length &gt; 0) sheet.getRange(2, 1, rows.length, DICT_HEADERS.length).setValues(rows);
+
+  Logger.log(&#x27;辞書に無い地名：%s種類。「%s」シートを確認してください&#x27;, rows.length, DICT_CONFIG.CANDIDATE_SHEET_NAME);
+  return rows;
+}
+
+
+// --------------------------- 出張確認の通知 ---------------------------
+
+/**
+ * 出張かどうか判断できない予定について、本人に確認を送る
+ * 対象：命名規則に合わない予定のうち、終日でなく、場所または本文に地名らしき記載があるもの
+ */
+function sendTripConfirmations() {
+  const cal = CalendarApp.getCalendarById(CONFIG.CALENDAR_ID);
+  if (!cal) throw new Error(&#x27;カレンダーが見つかりません：&#x27; + CONFIG.CALENDAR_ID);
+
+  const to = new Date();
+  const from = new Date(to.getFullYear(), to.getMonth(), to.getDate() - DICT_CONFIG.CONFIRM_LOOKBACK_DAYS);
+  const events = cal.getEvents(from, to);
+
+  const targets = [];
+  events.forEach(function (ev) {
+    const title = String(ev.getTitle() || &#x27;&#x27;).normalize(&#x27;NFKC&#x27;).trim();
+    if (!title) return;
+
+    const parsed = (typeof parseTitleSafe_ === &#x27;function&#x27;) ? parseTitleSafe_(title) : null;
+    if (parsed) return;                       // 規則に合っているものは確認不要
+    if (ev.isAllDayEvent()) return;           // 終日予定は対象外
+
+    const place = String(ev.getLocation() || &#x27;&#x27;).trim();
+    if (!place) return;                       // 場所の記載が無ければ判断材料が無いので対象外
+
+    targets.push({
+      dateStr: formatDateIso_(ev.getStartTime()),
+      title: title,
+      place: place,
+    });
+  });
+
+  if (targets.length === 0) {
+    Logger.log(&#x27;確認が必要な予定はありませんでした&#x27;);
+    return [];
+  }
+
+  const lines = targets.map(function (t) {
+    return &#x27;・&#x27; + t.dateStr + &#x27;　&#x27; + t.title + &#x27;（場所：&#x27; + t.place + &#x27;）&#x27;;
+  }).join(&#x27;\n&#x27;);
+
+  const message =
+    &#x27;経費申請の確認です。下記の予定は出張でしたでしょうか。\n&#x27; +
+    &#x27;出張だった場合は、予定のタイトルを「move///出発地→到着地」の形式に直してください。\n\n&#x27; +
+    lines + &#x27;\n\n&#x27; +
+    &#x27;※タイトルを直していただくと、次回の実行で自動的に交通費として集計されます。&#x27;;
+
+  sendNotice_(&#x27;[経費] 出張かどうかのご確認（&#x27; + targets.length + &#x27;件）&#x27;, message);
+  Logger.log(&#x27;確認を送りました：%s件&#x27;, targets.length);
+  return targets;
+}
+
+
+/** 通知の送信（メール／Google Chat を設定で切り替え） */
+function sendNotice_(subject, body) {
+  if (DICT_CONFIG.NOTIFY_METHOD === &#x27;chat&#x27;) {
+    const url = PropertiesService.getScriptProperties()
+      .getProperty(DICT_CONFIG.CHAT_WEBHOOK_PROPERTY);
+    if (!url) throw new Error(
+      &#x27;スクリプトプロパティ &#x27; + DICT_CONFIG.CHAT_WEBHOOK_PROPERTY + &#x27; にWebhook URLを設定してください&#x27;);
+
+    UrlFetchApp.fetch(url, {
+      method: &#x27;post&#x27;,
+      contentType: &#x27;application/json; charset=UTF-8&#x27;,
+      payload: JSON.stringify({ text: subject + &#x27;\n\n&#x27; + body }),
+    });
+    return;
+  }
+
+  MailApp.sendEmail(CONFIG.NOTIFY_EMAIL, subject, body);
+}
+
+
+// --------------------------- 動作確認用 ---------------------------
+
+/**
+ * 【すぐ動きます】辞書に見本を入れて、引き当てを確認する
+ * 実行すると「表記辞書」シートに見本4件を追記し、変換結果をログに出します。
+ */
+function testNormalize_() {
+  const sheet = getOrCreateSheet_(DICT_CONFIG.DICT_SHEET_NAME, DICT_HEADERS);
+  if (sheet.getLastRow() &lt; 2) {
+    sheet.getRange(2, 1, 4, DICT_HEADERS.length).setValues([
+      [&#x27;&#x27;,        &#x27;地名&#x27;, &#x27;東京駅&#x27;,   &#x27;東京&#x27;, &#x27;共通ルール（担当者を空欄にすると全員に適用）&#x27;],
+      [&#x27;&#x27;,        &#x27;地名&#x27;, &#x27;TOKYO&#x27;,   &#x27;東京&#x27;, &#x27;共通ルール&#x27;],
+      [&#x27;&#x27;,        &#x27;地名&#x27;, &#x27;大分空港&#x27;, &#x27;大分&#x27;, &#x27;共通ルール&#x27;],
+      [&#x27;山田 太郎&#x27;, &#x27;地名&#x27;, &#x27;本社&#x27;,    &#x27;東京&#x27;, &#x27;個人ルール（本人の書き方だけに適用）&#x27;],
+    ]);
+    Logger.log(&#x27;「%s」シートに見本を4件入れました&#x27;, DICT_CONFIG.DICT_SHEET_NAME);
+  }
+
+  const dict = loadDict_(true);   // 直前に見本を書き込んでいるため読み直す
+  const cases = [
+    [&#x27;山田 太郎&#x27;, &#x27;地名&#x27;, &#x27;本社&#x27;],
+    [&#x27;鈴木 花子&#x27;, &#x27;地名&#x27;, &#x27;本社&#x27;],
+    [&#x27;&#x27;,        &#x27;地名&#x27;, &#x27;ＴＯＫＹＯ&#x27;],
+    [&#x27;&#x27;,        &#x27;地名&#x27;, &#x27;東京 駅&#x27;],
+    [&#x27;&#x27;,        &#x27;地名&#x27;, &#x27;名古屋&#x27;],
+  ];
+  cases.forEach(function (c) {
+    Logger.log(&#x27;%s ／ %s → %s&#x27;,
+      c[0] || &#x27;(担当者なし)&#x27;, c[2], normalizeTerm_(c[0], c[1], c[2], dict));
+  });
+}
+</pre>
+      </details>
+      <details class="src">
+        <summary><span class="fn">区間料金と命名規則</span><span class="pill opt">任意</span><span class="sz">250行 / 約10KB</span></summary>
+        <p class="srcdesc">予定タイトルの解析・区間運賃の取得</p>
+        <div class="srcbar"><span class="srcfile">04_経費自動化_区間料金と命名規則.gs</span><button type="button" data-copy-src="src-fare">全文をコピー</button></div>
+        <pre class="code srcpre" id="src-fare">/**
+ * 経費申請効率化｜区間料金の算出＋カレンダー命名規則の解析
+ * ------------------------------------------------------------------
+ * 貴社のカレンダー命名規則（prefix///詳細）に対応。
+ *   move///東京→大分   → 移動（区間を抽出して運賃を算出）
+ *   consul///クライアント名 → コンサル支援（摘要に反映）
+ *   gathering///        → 懇親会（会食＝参加者を自動選択）
+ *
+ * 区間料金は「①区間マスタ → ②駅すぱあとAPI」の二段構え。
+ * APIで取得した運賃はマスタへ自動追記されるため、使うほどAPI呼び出しが減ります。
+ *
+ * 設計：デジライズ ／ 実装・カスタマイズ：貴社
+ * ------------------------------------------------------------------
+ */
+
+// ========================= CONFIG =========================
+const FARE_CONFIG = {
+  // ★TODO: 駅すぱあとAPIのアクセスキー（取得後にスクリプトプロパティへ登録）
+  //   設定方法：プロジェクトの設定 → スクリプト プロパティ → EKISPERT_KEY を追加
+  //   ※キーはコードに直書きしないこと
+  API_ENDPOINT: &#x27;https://api.ekispert.jp/v1/json/search/course/extreme&#x27;,
+
+  // 区間マスタのシート名（メイン側 CONFIG.FARE_SHEET_NAME と合わせる）
+  FARE_SHEET_NAME: &#x27;区間マスタ&#x27;,
+
+  // APIで取得した運賃をマスタへ自動追記するか
+  AUTO_APPEND_MASTER: true,
+
+  // 座席区分：&#x27;plane&#x27;（航空含む）を除外し鉄道優先にするなど、必要に応じて調整
+  SEARCH_TYPE: &#x27;plain&#x27;,   // 標準探索
+};
+
+/**
+ * カレンダー命名規則の定義（貴社ルール）
+ * prefix///詳細　の形式で判定する
+ */
+const CAL_PREFIX = {
+  meeting:   { label: &#x27;社内ミーティング&#x27;, category: null,        isMove: false, isDining: false },
+  consul:    { label: &#x27;コンサルティング支援&#x27;, category: null,    isMove: false, isDining: false },
+  sales:     { label: &#x27;営業&#x27;,           category: null,          isMove: false, isDining: false },
+  work:      { label: &#x27;作業&#x27;,           category: null,          isMove: false, isDining: false },
+  move:      { label: &#x27;移動&#x27;,           category: &#x27;交通費&#x27;,      isMove: true,  isDining: false },
+  training:  { label: &#x27;研修&#x27;,           category: null,          isMove: false, isDining: false },
+  review:    { label: &#x27;レビュー&#x27;,        category: null,         isMove: false, isDining: false },
+  seminar:   { label: &#x27;セミナー&#x27;,        category: null,         isMove: false, isDining: false },
+  event:     { label: &#x27;イベント行事&#x27;,     category: null,        isMove: false, isDining: false },
+  ceremony:  { label: &#x27;社内行事&#x27;,        category: null,         isMove: false, isDining: false },
+  gathering: { label: &#x27;懇親会&#x27;,          category: &#x27;接待交際費&#x27;,  isMove: false, isDining: true },
+  recruit:   { label: &#x27;採用活動&#x27;,        category: null,         isMove: false, isDining: false },
+  defense:   { label: &#x27;防衛時間&#x27;,        category: null,         isMove: false, isDining: false },
+};
+// ==========================================================
+
+
+/**
+ * カレンダーのタイトルを解析する
+ * @return {{prefix, label, detail, from, to, isMove, isDining, category}}
+ */
+function parseCalendarTitle_(title) {
+  const t = String(title || &#x27;&#x27;).normalize(&#x27;NFKC&#x27;).trim();
+  const m = t.match(/^([a-zA-Z]+)\s*\/\/\/\s*(.*)$/);
+  if (!m) {
+    return { prefix: &#x27;&#x27;, label: &#x27;&#x27;, detail: t, from: &#x27;&#x27;, to: &#x27;&#x27;,
+             isMove: false, isDining: false, category: null, matched: false };
+  }
+  const prefix = m[1].toLowerCase();
+  const detail = (m[2] || &#x27;&#x27;).trim();
+  const def = CAL_PREFIX[prefix] || { label: &#x27;&#x27;, category: null, isMove: false, isDining: false };
+
+  // move の場合は「東京→大分」形式から区間を抽出
+  let from = &#x27;&#x27;, to = &#x27;&#x27;;
+  if (def.isMove) {
+    const r = detail.match(/^(.+?)\s*(?:→|-&gt;|〜|~|ー|-)\s*(.+)$/);
+    if (r) { from = r[1].trim(); to = r[2].trim(); }
+  }
+
+  return { prefix: prefix, label: def.label, detail: detail, from: from, to: to,
+           isMove: def.isMove, isDining: def.isDining, category: def.category, matched: true };
+}
+
+
+/**
+ * 区間料金を取得する（①マスタ → ②API の順に引き当て）
+ * @return {{amount:number|null, source:string, note:string}}
+ */
+function getFare_(from, to) {
+  if (!from || !to) return { amount: null, source: &#x27;&#x27;, note: &#x27;区間が不明&#x27; };
+
+  // ---- ① 区間マスタを検索（0円・即時） ----
+  const hit = lookupFareMaster_(from, to);
+  if (hit !== null) {
+    return { amount: hit, source: &#x27;マスタ&#x27;, note: from + &#x27;→&#x27; + to };
+  }
+
+  // ---- ② 駅すぱあとAPIで検索 ----
+  const api = fetchFareFromEkispert_(from, to);
+  if (api.amount !== null) {
+    if (FARE_CONFIG.AUTO_APPEND_MASTER) {
+      appendFareMaster_(from, to, api.amount, api.note);   // 次回以降はマスタで即答
+    }
+    return { amount: api.amount, source: &#x27;API&#x27;, note: api.note };
+  }
+
+  return { amount: null, source: &#x27;&#x27;, note: api.note || &#x27;運賃を取得できません&#x27; };
+}
+
+
+/** ① 区間マスタから検索（往復・逆方向にも対応） */
+function lookupFareMaster_(from, to) {
+  const ss = SpreadsheetApp.openById(CONFIG.LOG_SHEET_ID);
+  const sh = ss.getSheetByName(FARE_CONFIG.FARE_SHEET_NAME);
+  if (!sh || sh.getLastRow() &lt; 2) return null;
+
+  const rows = sh.getRange(2, 1, sh.getLastRow() - 1, 4).getValues();  // 出発/到着/交通機関/片道金額
+  const nf = norm_(from), nt = norm_(to);
+  for (const r of rows) {
+    const a = norm_(String(r[0])), b = norm_(String(r[1]));
+    if (!a || !b) continue;
+    // 順方向・逆方向のどちらでも一致とみなす
+    if ((a === nf &amp;&amp; b === nt) || (a === nt &amp;&amp; b === nf)) {
+      const v = Number(r[3]);
+      if (v &gt; 0) return v;
+    }
+  }
+  return null;
+}
+
+
+/**
+ * ② 駅すぱあとAPIから運賃を取得
+ * ★初回は testFareApi_() を実行し、実レスポンスの構造を確認してください。
+ *   （レスポンスの項目名は契約プランにより異なる場合があります）
+ */
+function fetchFareFromEkispert_(from, to) {
+  const key = PropertiesService.getScriptProperties().getProperty(&#x27;EKISPERT_KEY&#x27;);
+  if (!key) return { amount: null, note: &#x27;APIキー未設定（EKISPERT_KEY）&#x27; };
+
+  try {
+    const url = FARE_CONFIG.API_ENDPOINT +
+      &#x27;?key=&#x27; + encodeURIComponent(key) +
+      &#x27;&amp;viaList=&#x27; + encodeURIComponent(from + &#x27;:&#x27; + to) +
+      &#x27;&amp;searchType=&#x27; + FARE_CONFIG.SEARCH_TYPE;
+
+    const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    if (res.getResponseCode() !== 200) {
+      return { amount: null, note: &#x27;API応答エラー:&#x27; + res.getResponseCode() };
+    }
+    const json = JSON.parse(res.getContentText());
+    const amount = pickTotalFare_(json);
+    return amount !== null
+      ? { amount: amount, note: from + &#x27;→&#x27; + to + &#x27;（API取得）&#x27; }
+      : { amount: null, note: &#x27;API応答から運賃を特定できず&#x27; };
+  } catch (e) {
+    return { amount: null, note: &#x27;API例外:&#x27; + e };
+  }
+}
+
+
+/**
+ * APIレスポンスから合計運賃を取り出す
+ * 駅すぱあとの Price は kind ごとに分かれるため、合計（Summary）を優先して採用する
+ *   Summary       … 運賃＋料金の合計
+ *   FareSummary   … 運賃のみ
+ *   ChargeSummary … 特急料金など
+ */
+function pickTotalFare_(json) {
+  try {
+    let courses = json.ResultSet &amp;&amp; json.ResultSet.Course;
+    if (!courses) return null;
+    if (!Array.isArray(courses)) courses = [courses];
+    const course = courses[0];
+
+    let prices = course.Price;
+    if (!prices) return null;
+    if (!Array.isArray(prices)) prices = [prices];
+
+    const byKind = {};
+    prices.forEach(function (p) {
+      const oneway = Number(p.Oneway || p.oneway || 0);
+      if (p.kind &amp;&amp; oneway &gt; 0) byKind[p.kind] = (byKind[p.kind] || 0) + oneway;
+    });
+
+    if (byKind[&#x27;Summary&#x27;]) return byKind[&#x27;Summary&#x27;];
+    const fare = byKind[&#x27;FareSummary&#x27;] || 0;
+    const charge = byKind[&#x27;ChargeSummary&#x27;] || 0;
+    if (fare + charge &gt; 0) return fare + charge;
+    return null;
+  } catch (e) {
+    Logger.log(&#x27;運賃の抽出に失敗: &#x27; + e);
+    return null;
+  }
+}
+
+
+/** 取得した運賃を区間マスタへ自動追記（次回以降はAPIを使わない） */
+function appendFareMaster_(from, to, amount, note) {
+  try {
+    const ss = SpreadsheetApp.openById(CONFIG.LOG_SHEET_ID);
+    let sh = ss.getSheetByName(FARE_CONFIG.FARE_SHEET_NAME);
+    if (!sh) {
+      sh = ss.insertSheet(FARE_CONFIG.FARE_SHEET_NAME);
+      sh.appendRow([&#x27;出発&#x27;, &#x27;到着&#x27;, &#x27;交通機関&#x27;, &#x27;片道金額&#x27;, &#x27;備考&#x27;, &#x27;登録日&#x27;]);
+    }
+    sh.appendRow([from, to, &#x27;鉄道&#x27;, amount, note || &#x27;API自動登録&#x27;,
+                  Utilities.formatDate(new Date(), &#x27;Asia/Tokyo&#x27;, &#x27;yyyy-MM-dd&#x27;)]);
+  } catch (e) {
+    Logger.log(&#x27;マスタ追記に失敗: &#x27; + e);
+  }
+}
+
+
+// --------------------------- 動作確認用 ---------------------------
+
+/**
+ * ★最初に実行してください：APIの実レスポンスを確認する
+ * ログに生の応答が出るので、運賃の項目名を確認できます。
+ */
+function testFareApi_() {
+  const key = PropertiesService.getScriptProperties().getProperty(&#x27;EKISPERT_KEY&#x27;);
+  if (!key) { Logger.log(&#x27;先に EKISPERT_KEY を設定してください&#x27;); return; }
+
+  const url = FARE_CONFIG.API_ENDPOINT +
+    &#x27;?key=&#x27; + encodeURIComponent(key) +
+    &#x27;&amp;viaList=&#x27; + encodeURIComponent(&#x27;東京:大分&#x27;) +
+    &#x27;&amp;searchType=&#x27; + FARE_CONFIG.SEARCH_TYPE;
+
+  const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+  Logger.log(&#x27;HTTP: &#x27; + res.getResponseCode());
+  Logger.log(res.getContentText().slice(0, 3000));   // 先頭3000文字を確認
+  Logger.log(&#x27;--- 抽出結果: &#x27; + pickTotalFare_(JSON.parse(res.getContentText())));
+}
+
+/** 命名規則の解析テスト（APIキー不要・すぐ動きます） */
+function testParseTitles_() {
+  const samples = [
+    &#x27;move///東京→大分&#x27;,
+    &#x27;move///福岡 → 東京(羽田)&#x27;,
+    &#x27;consul///SUMUS様&#x27;,
+    &#x27;gathering///懇親会&#x27;,
+    &#x27;meeting///週次定例&#x27;,
+    &#x27;defense///&#x27;,
+    &#x27;通常の予定タイトル&#x27;,
+  ];
+  samples.forEach(function (t) {
+    const p = parseCalendarTitle_(t);
+    Logger.log(&#x27;%s → 種別:%s / 詳細:%s / 区間:%s / 移動:%s / 会食:%s / 区分:%s&#x27;,
+      t, p.label || &#x27;(規則外)&#x27;, p.detail, (p.from ? p.from + &#x27;→&#x27; + p.to : &#x27;-&#x27;),
+      p.isMove, p.isDining, p.category || &#x27;-&#x27;);
+  });
+}
+</pre>
+      </details>
+      <details class="src">
+        <summary><span class="fn">メール収集</span><span class="pill opt">任意</span><span class="sz">145行 / 約6KB</span></summary>
+        <p class="srcdesc">Gmailからの領収書収集（Flowsへ移行する場合は設計図として使用）</p>
+        <div class="srcbar"><span class="srcfile">05_経費自動化_メール収集.gs</span><button type="button" data-copy-src="src-mail">全文をコピー</button></div>
+        <pre class="code srcpre" id="src-mail">/**
+ * 経費申請効率化｜ルートA：メール自動収集
+ * ------------------------------------------------------------------
+ * ANA・ソラシドエア等、決済時に領収書がメールで届く航空会社に対応。
+ * Gmail → 領収書PDFを抽出 → 共有ドライブ「領収書保管フォルダー」へ保存
+ *
+ * このスクリプトを実行後、「経費自動化_メイン.gs」の main() を動かせば、
+ * カレンダー突合・MF連携まで一気通貫で処理されます。
+ * （collectAndRun() を使えば「収集→処理」を一度に実行できます）
+ *
+ * 設計：デジライズ ／ 実装・カスタマイズ：貴社
+ * ------------------------------------------------------------------
+ */
+
+// ========================= CONFIG（ここだけ編集） =========================
+const MAIL_CONFIG = {
+  // 保存先フォルダのID（共有ドライブ「領収書保管フォルダー」）
+  // https://drive.google.com/drive/folders/1AbCdEfGhIjKlMnOpQrStUvWxYz01234
+  FOLDER_IN: &#x27;1AbCdEfGhIjKlMnOpQrStUvWxYz01234&#x27;,
+
+  // 何日前までのメールを対象にするか（毎月実行なら 35 程度が安全）
+  LOOKBACK_DAYS: 35,
+
+  // 処理済みメールに付けるGmailラベル（重複保存の防止）
+  PROCESSED_LABEL: &#x27;経費_取込済み&#x27;,
+
+  // ★TODO: 航空会社ごとの検索ルール
+  //  name  : リネーム時の発行元名
+  //  query : Gmailの検索クエリ
+  //  ※実際の送信元アドレス・件名は、届いているメールを見て調整してください
+  SOURCES: [
+    {
+      name: &#x27;ANA&#x27;,
+      query: &#x27;from:(ana.co.jp OR 121ana.com) (領収書 OR ご請求 OR 予約 OR 購入)&#x27;,
+    },
+    {
+      name: &#x27;ソラシド&#x27;,
+      query: &#x27;from:(solaseedair.jp) (領収書 OR ご請求 OR 予約 OR 購入)&#x27;,
+    },
+    // ★JAL・スカイマークは、メール送付の有無を確認のうえ追加してください
+    // { name: &#x27;JAL&#x27;,        query: &#x27;from:(jal.com OR jal.co.jp) (領収書 OR ご請求)&#x27; },
+    // { name: &#x27;スカイマーク&#x27;, query: &#x27;from:(skymark.co.jp) (領収書 OR ご請求)&#x27; },
+  ],
+};
+// =========================================================================
+
+
+/** ルートA：メールから領収書を収集して「領収書保管フォルダー」へ保存 */
+function collectReceiptsFromMail() {
+  const folder = DriveApp.getFolderById(MAIL_CONFIG.FOLDER_IN);
+  const label = getOrCreateLabel_(MAIL_CONFIG.PROCESSED_LABEL);
+
+  let saved = 0, noAttach = 0;
+
+  MAIL_CONFIG.SOURCES.forEach(function (src) {
+    const q = src.query +
+      &#x27; newer_than:&#x27; + MAIL_CONFIG.LOOKBACK_DAYS + &#x27;d&#x27; +
+      &#x27; -label:&#x27; + MAIL_CONFIG.PROCESSED_LABEL;
+    const threads = GmailApp.search(q, 0, 100);
+
+    threads.forEach(function (thread) {
+      thread.getMessages().forEach(function (msg) {
+        const r = saveAttachments_(msg, src.name, folder);
+        saved += r.saved;
+        noAttach += r.noAttach;
+      });
+      thread.addLabel(label);   // 二重取込の防止
+    });
+  });
+
+  Logger.log(&#x27;メール収集：PDF保存 %s件 ／ 添付なし %s件&#x27;, saved, noAttach);
+  return { saved: saved, noAttach: noAttach };
+}
+
+
+/** 1通のメールからPDF添付を保存 */
+function saveAttachments_(msg, vendorName, folder) {
+  const pdfs = msg.getAttachments().filter(function (a) {
+    return a.getContentType() === &#x27;application/pdf&#x27;;
+  });
+
+  if (pdfs.length === 0) {
+    // 添付なし＝本文にDLリンクがある型。ログだけ残す（人が対応）
+    Logger.log(&#x27;添付なし: [%s] %s&#x27;, vendorName, msg.getSubject());
+    return { saved: 0, noAttach: 1 };
+  }
+
+  let saved = 0;
+  pdfs.forEach(function (pdf) {
+    // 仮の命名（正式なリネームはメイン側の判定処理で行う）
+    const dateStr = Utilities.formatDate(msg.getDate(), &#x27;Asia/Tokyo&#x27;, &#x27;yyyyMMdd&#x27;);
+    const name = [vendorName, dateStr, pdf.getName()].join(&#x27;_&#x27;);
+
+    // 同名ファイルが既にあればスキップ（重複防止）
+    if (folder.getFilesByName(name).hasNext()) return;
+
+    folder.createFile(pdf.copyBlob()).setName(name);
+    saved++;
+  });
+
+  return { saved: saved, noAttach: 0 };
+}
+
+
+/** 【推奨】収集 → 本処理 を一度に実行（毎月21日のトリガーはこれを指定） */
+function collectAndRun() {
+  collectReceiptsFromMail();   // ルートA：メールから自動収集
+  main();                      // メイン処理（判定・突合・MF連携）※メイン.gsの関数
+}
+
+
+/** 毎月21日 8時台に「収集→本処理」を自動実行するトリガーを登録 */
+function setupMonthlyTriggerWithMail() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === &#x27;collectAndRun&#x27; || t.getHandlerFunction() === &#x27;main&#x27;) {
+      ScriptApp.deleteTrigger(t);
+    }
+  });
+  ScriptApp.newTrigger(&#x27;collectAndRun&#x27;).timeBased().onMonthDay(21).atHour(8).create();
+  Logger.log(&#x27;毎月21日 8時台に「メール収集→本処理」を実行するトリガーを登録しました&#x27;);
+}
+
+
+/** 送信元アドレスの調査用：直近の該当メールを一覧表示（設定前の確認に使う） */
+function inspectReceiptMails() {
+  const q = &#x27;(領収書 OR ご請求 OR eチケット) newer_than:90d&#x27;;
+  const threads = GmailApp.search(q, 0, 30);
+  threads.forEach(function (t) {
+    t.getMessages().forEach(function (m) {
+      const atts = m.getAttachments().filter(function (a) {
+        return a.getContentType() === &#x27;application/pdf&#x27;;
+      });
+      Logger.log(&#x27;%s | %s | PDF添付:%s&#x27;,
+        m.getFrom(), m.getSubject(), atts.length);
+    });
+  });
+  Logger.log(&#x27;※上記の送信元・件名をもとに MAIL_CONFIG.SOURCES を調整してください&#x27;);
+}
+
+
+// --------------------------- ユーティリティ ---------------------------
+
+function getOrCreateLabel_(name) {
+  return GmailApp.getUserLabelByName(name) || GmailApp.createLabel(name);
+}
+</pre>
+      </details>
     </div>
   </div>
 </section>
@@ -873,7 +2456,8 @@
         </table>
       </div>
       <p>書き換え後はこのような形になります。</p>
-      <pre class="code">const CONFIG = {
+      <div class="srcbar" style="margin-top:10px"><span class="srcfile">CONFIG（メイン ファイルの先頭）</span><button type="button" data-copy-src="src-config">ひな形をコピー</button></div>
+      <pre class="code" id="src-config">const CONFIG = {
   FOLDER_IN:    '1AbCdEfGhIjKlMnOpQrStUvWxYz01234',
   FOLDER_DONE:  '（02_処理済みのID）',
   FOLDER_ERROR: '（03_エラーのID）',
@@ -886,7 +2470,7 @@
   NOTIFY_EMAIL: 'keiri@example.co.jp',
 
   CLOSING_DAY: 20,
-  ENABLE_MF: false,      ← ここは false のまま
+  ENABLE_MF: false,      // ← ここは false のまま
 };</pre>
       <div class="note crit">
         <span class="lbl">ENABLE_MF は false のままにしてください</span>
@@ -1311,9 +2895,12 @@
   });
 
   // copy buttons
-  document.querySelectorAll('button[data-copy]').forEach(function(btn){
+  document.querySelectorAll('button[data-copy], button[data-copy-src]').forEach(function(btn){
     btn.addEventListener('click', function(){
-      var text = btn.getAttribute('data-copy');
+      var src = btn.getAttribute('data-copy-src');
+      var text = src
+        ? (document.getElementById(src) || {textContent:''}).textContent
+        : btn.getAttribute('data-copy');
       var ok = function(){
         var old = btn.textContent;
         btn.textContent = 'コピー済';
