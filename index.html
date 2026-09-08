@@ -374,7 +374,7 @@
     <li><a href="#p1"><span class="n">STEP 1</span><span class="t">Apps Scriptプロジェクトを作る</span><span class="c">5分</span></a></li>
     <li><a href="#p2"><span class="n">STEP 2</span><span class="t">マニフェストを差し替える</span><span class="c">5分</span></a></li>
     <li><a href="#p3"><span class="n">STEP 3</span><span class="t">コードを5ファイル貼り付ける</span><span class="c">10分</span></a></li>
-    <li><a href="#p4"><span class="n">STEP 4</span><span class="t">CONFIGを自社の環境に書き換える</span><span class="c">10分</span></a></li>
+    <li><a href="#p4"><span class="n">STEP 4</span><span class="t">設定値を自社の環境に書き換える</span><span class="c">10分</span></a></li>
     <li><a href="#p5"><span class="n">STEP 5</span><span class="t">設定不要のテストを3つ動かす</span><span class="c">10分</span></a></li>
     <li><a href="#p6"><span class="n">STEP 6</span><span class="t">領収書1件で本処理を試す</span><span class="c">15分</span></a></li>
     <li><a href="#p7"><span class="n">STEP 7</span><span class="t">カレンダー系の2つを動かす</span><span class="c">10分</span></a></li>
@@ -627,7 +627,7 @@
 
       <rect x="46" y="302" width="688" height="44" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
       <text x="64" y="322" font-size="13" font-weight="700" fill="currentColor">④ 締め処理レポートに1行追記し、未提出があればメールで通知</text>
-      <text x="64" y="339" font-size="11" fill="currentColor" opacity=".75">通知先は CONFIG.NOTIFY_EMAIL</text>
+      <text x="64" y="339" font-size="11" fill="currentColor" opacity=".75">通知先は 経費設定.NOTIFY_EMAIL</text>
     </svg></div>
     <figcaption>
       <strong>図3：月3回の自動実行は、図2をまるごと内側に含みます。</strong>
@@ -645,7 +645,7 @@
         <tr><td class="m">準備</td><td>フォルダ・スプレッドシート</td><td>図2の入口と、⑦の出力先すべて</td></tr>
         <tr><td class="m">STEP 2</td><td>マニフェスト（Drive API）</td><td><strong>図2の①</strong>。ここが無いと1手目で止まります</td></tr>
         <tr><td class="m">STEP 3</td><td>5ファイルの貼り付け</td><td>図2の全体と、図3の外枠</td></tr>
-        <tr><td class="m">STEP 4</td><td>CONFIG（ID・通知先）</td><td>図2の入口・⑦、図3の④の宛先</td></tr>
+        <tr><td class="m">STEP 4</td><td>経費設定（ID・通知先）</td><td>図2の入口・⑦、図3の④の宛先</td></tr>
         <tr><td class="m">STEP 5</td><td>― （動作確認のみ）</td><td>図3の②の日付計算、図2の④の辞書</td></tr>
         <tr><td class="m">STEP 6</td><td>― （動作確認のみ）</td><td><strong>図2の①〜⑦</strong>を1件で通す</td></tr>
         <tr><td class="m">STEP 7</td><td>表記辞書の中身</td><td>図2の④の精度。育てるほど揃います</td></tr>
@@ -894,8 +894,8 @@
  * ------------------------------------------------------------------
  */
 
-// ========================= CONFIG（ここだけ編集） =========================
-const CONFIG = {
+// ========================= 経費設定（ここだけ編集） =========================
+const 経費設定 = {
   // ★TODO: 各フォルダのID（フォルダURLの /folders/ 以降）
   FOLDER_IN:    &#x27;ここに「01_投入」フォルダIDを貼る&#x27;,
   FOLDER_DONE:  &#x27;ここに「02_処理済み」フォルダIDを貼る&#x27;,
@@ -957,7 +957,7 @@ const LOG_HEADERS = [
 
 /** メイン：トリガーからはこれを呼ぶ */
 function main() {
-  const inFolder = DriveApp.getFolderById(CONFIG.FOLDER_IN);
+  const inFolder = DriveApp.getFolderById(経費設定.FOLDER_IN);
   const sheet = getLogSheet_();
   const files = inFolder.getFiles();
 
@@ -968,12 +968,12 @@ function main() {
     try {
       const result = processFile_(file);
       logRow_(sheet, result.row);
-      if (result.status === &#x27;正常&#x27;) { moveTo_(file, CONFIG.FOLDER_DONE, true); ok++; }
-      else if (result.status === &#x27;要確認&#x27;) { moveTo_(file, CONFIG.FOLDER_DONE, true); warn++; }
-      else { moveTo_(file, CONFIG.FOLDER_ERROR, false); err++; }
+      if (result.status === &#x27;正常&#x27;) { moveTo_(file, 経費設定.FOLDER_DONE, true); ok++; }
+      else if (result.status === &#x27;要確認&#x27;) { moveTo_(file, 経費設定.FOLDER_DONE, true); warn++; }
+      else { moveTo_(file, 経費設定.FOLDER_ERROR, false); err++; }
     } catch (e) {
       logRow_(sheet, [now_(), file.getName(), &#x27;&#x27;, &#x27;&#x27;, &#x27;&#x27;, &#x27;&#x27;, &#x27;&#x27;, &#x27;&#x27;, &#x27;&#x27;, &#x27;&#x27;, &#x27;&#x27;, &#x27;エラー&#x27;, String(e)]);
-      moveTo_(file, CONFIG.FOLDER_ERROR, false);
+      moveTo_(file, 経費設定.FOLDER_ERROR, false);
       err++;
     }
   }
@@ -1018,7 +1018,7 @@ function processFile_(file) {
 
   // ---- ④ MF経費へ連携（★運賃・区間もあわせて転記：2026-08-10の決定） ----
   let mfId = &#x27;&#x27;;
-  if (CONFIG.ENABLE_MF) {
+  if (経費設定.ENABLE_MF) {
     mfId = createMfExpense_({ date: date, amount: amount, vendor: vendor,
                               memo: matched.memo, category: category,
                               route: route, fare: fare, file: file });
@@ -1172,9 +1172,9 @@ function detectAmountFromName_(name) {
 // --------------------------- ②カレンダー突合 ---------------------------
 
 function matchCalendar_(date, vendor) {
-  const cal = CONFIG.CALENDAR_ID === &#x27;primary&#x27;
+  const cal = 経費設定.CALENDAR_ID === &#x27;primary&#x27;
     ? CalendarApp.getDefaultCalendar()
-    : CalendarApp.getCalendarById(CONFIG.CALENDAR_ID);
+    : CalendarApp.getCalendarById(経費設定.CALENDAR_ID);
   if (!cal) return { memo: &#x27;&#x27;, candidates: 0, route: &#x27;&#x27;, candidateTitles: &#x27;&#x27; };
 
   const start = new Date(date); start.setHours(0, 0, 0, 0);
@@ -1216,8 +1216,8 @@ function guessCategory_(vendor, matched) {
 // --------------------------- ③区間料金（案②：マスタ引き当て） ---------------------------
 
 function lookupFare_(route) {
-  const ss = SpreadsheetApp.openById(CONFIG.LOG_SHEET_ID);
-  const sh = ss.getSheetByName(CONFIG.FARE_SHEET_NAME);
+  const ss = SpreadsheetApp.openById(経費設定.LOG_SHEET_ID);
+  const sh = ss.getSheetByName(経費設定.FARE_SHEET_NAME);
   if (!sh || sh.getLastRow() &lt; 2) return null;
   const rows = sh.getRange(2, 1, sh.getLastRow() - 1, 4).getValues();  // 出発/到着/交通機関/片道金額
   const norm = String(route).replace(/\s/g, &#x27;&#x27;);
@@ -1232,7 +1232,7 @@ function lookupFare_(route) {
 // --------------------------- ④MFクラウド経費 連携 ---------------------------
 
 /**
- * ★API契約・office_id 確定後に有効化（CONFIG.ENABLE_MF = true）
+ * ★API契約・office_id 確定後に有効化（経費設定.ENABLE_MF = true）
  * 認証：OAuth2.0。トークンはスクリプトプロパティに保管し、コードに直書きしない。
  */
 function createMfExpense_(params) {
@@ -1296,10 +1296,10 @@ function buildMfRemark_(params) {
 // --------------------------- ⑤ログ・通知・ユーティリティ ---------------------------
 
 function getLogSheet_() {
-  const ss = SpreadsheetApp.openById(CONFIG.LOG_SHEET_ID);
-  let sh = ss.getSheetByName(CONFIG.LOG_SHEET_NAME);
+  const ss = SpreadsheetApp.openById(経費設定.LOG_SHEET_ID);
+  let sh = ss.getSheetByName(経費設定.LOG_SHEET_NAME);
   if (!sh) {
-    sh = ss.insertSheet(CONFIG.LOG_SHEET_NAME);
+    sh = ss.insertSheet(経費設定.LOG_SHEET_NAME);
     sh.appendRow(LOG_HEADERS);
     sh.getRange(1, 1, 1, LOG_HEADERS.length).setFontWeight(&#x27;bold&#x27;);
     sh.setFrozenRows(1);
@@ -1330,8 +1330,8 @@ function moveTo_(file, folderId, useYearMonth) {
 function notify_(warn, err) {
   const subject = `[経費自動化] 要確認 ${warn}件 / エラー ${err}件`;
   const body = &#x27;ログをご確認ください：\n&#x27; +
-    &#x27;https://docs.google.com/spreadsheets/d/&#x27; + CONFIG.LOG_SHEET_ID;
-  MailApp.sendEmail(CONFIG.NOTIFY_EMAIL, subject, body);
+    &#x27;https://docs.google.com/spreadsheets/d/&#x27; + 経費設定.LOG_SHEET_ID;
+  MailApp.sendEmail(経費設定.NOTIFY_EMAIL, subject, body);
 }
 
 function now_() { return Utilities.formatDate(new Date(), &#x27;Asia/Tokyo&#x27;, &#x27;yyyy-MM-dd HH:mm&#x27;); }
@@ -1370,15 +1370,15 @@ function setupMonthlyTrigger() {
  *  ・カレンダーに出張予定があるのに領収書が無いものを検出してお知らせします
  *  ・命名規則に合わない予定（毎月の定常訪問など）をリスト化します
  *
- * 依存：経費自動化_メイン.gs（CONFIG / main / getLogSheet_ ほか）
+ * 依存：経費自動化_メイン.gs（経費設定 / main / getLogSheet_ ほか）
  * 　　　経費自動化_区間料金と命名規則.gs（parseCalendarTitle_）※無くても動きます
  *
  * 設計：デジライズ ／ 実装・カスタマイズ：貴社
  * ------------------------------------------------------------------
  */
 
-// ========================= CONFIG（ここだけ編集） =========================
-const CLOSING_CONFIG = {
+// ========================= 経費設定（ここだけ編集） =========================
+const 締め処理設定 = {
   // 締め日。この日で1つの区間が終わる（前月21日 〜 当月20日）
   CLOSING_DAY: 20,
 
@@ -1395,7 +1395,7 @@ const CLOSING_CONFIG = {
   // カレンダーの「移動」を表すプレフィックス（例：move///東京→大分）
   MOVE_PREFIX: &#x27;move&#x27;,
 
-  // レポートの出力先シート名（CONFIG.LOG_SHEET_ID のブック内に自動作成）
+  // レポートの出力先シート名（経費設定.LOG_SHEET_ID のブック内に自動作成）
   REPORT_SHEET_NAME: &#x27;締め処理レポート&#x27;,
   NAMING_SHEET_NAME: &#x27;命名規則チェック&#x27;,
 
@@ -1428,7 +1428,7 @@ function runClosingBatch() {
   writeClosingReport_(period, runLabel, plans, receipts, missing);
 
   // ---- ④ 申請漏れがあれば知らせる ----
-  if (missing.length &gt; 0 &amp;&amp; CLOSING_CONFIG.NOTIFY) {
+  if (missing.length &gt; 0 &amp;&amp; 締め処理設定.NOTIFY) {
     notifyMissing_(period, runLabel, missing);
   }
 
@@ -1453,7 +1453,7 @@ function runClosingBatch() {
  */
 function currentClosingPeriod_(today) {
   const d = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const closingDay = CLOSING_CONFIG.CLOSING_DAY;
+  const closingDay = 締め処理設定.CLOSING_DAY;
 
   // 区間の終わり（締め日）が属する月を決める
   const endMonthOffset = (d.getDate() &gt; closingDay) ? 0 : -1;
@@ -1471,7 +1471,7 @@ function currentClosingPeriod_(today) {
 /** 実行日から、3回のうちどのタイミングかを判定する */
 function runLabelForToday_(today) {
   const day = today.getDate();
-  const hit = CLOSING_CONFIG.RUNS.filter(function (r) { return r.day === day; })[0];
+  const hit = 締め処理設定.RUNS.filter(function (r) { return r.day === day; })[0];
   return hit ? hit.label : &#x27;手動実行&#x27;;
 }
 
@@ -1483,8 +1483,8 @@ function runLabelForToday_(today) {
  * 命名規則： move///東京→大分
  */
 function collectTripPlans_(from, to) {
-  const cal = CalendarApp.getCalendarById(CONFIG.CALENDAR_ID);
-  if (!cal) throw new Error(&#x27;カレンダーが見つかりません：&#x27; + CONFIG.CALENDAR_ID);
+  const cal = CalendarApp.getCalendarById(経費設定.CALENDAR_ID);
+  if (!cal) throw new Error(&#x27;カレンダーが見つかりません：&#x27; + 経費設定.CALENDAR_ID);
 
   // 終了日も含めるため、翌日の0時までを範囲にする
   const until = new Date(to.getFullYear(), to.getMonth(), to.getDate() + 1);
@@ -1494,7 +1494,7 @@ function collectTripPlans_(from, to) {
   events.forEach(function (ev) {
     const title = String(ev.getTitle() || &#x27;&#x27;).normalize(&#x27;NFKC&#x27;).trim();
     const parsed = parseTitleSafe_(title);
-    if (!parsed || parsed.prefix !== CLOSING_CONFIG.MOVE_PREFIX) return;
+    if (!parsed || parsed.prefix !== 締め処理設定.MOVE_PREFIX) return;
 
     plans.push({
       date:  ev.getStartTime(),
@@ -1619,7 +1619,7 @@ function findMissingReceipts_(plans, receipts) {
 
 /** 締め処理の結果をシートに追記する */
 function writeClosingReport_(period, runLabel, plans, receipts, missing) {
-  const sheet = getOrCreateSheet_(CLOSING_CONFIG.REPORT_SHEET_NAME, [
+  const sheet = getOrCreateSheet_(締め処理設定.REPORT_SHEET_NAME, [
     &#x27;実行日時&#x27;, &#x27;実行タイミング&#x27;, &#x27;対象区間&#x27;, &#x27;出張予定&#x27;, &#x27;領収書&#x27;, &#x27;未提出&#x27;, &#x27;未提出の内訳&#x27;,
   ]);
 
@@ -1636,7 +1636,7 @@ function writeClosingReport_(period, runLabel, plans, receipts, missing) {
 
 /** ブック内のシートを取得（無ければ見出し付きで作成） */
 function getOrCreateSheet_(name, headers) {
-  const ss = SpreadsheetApp.openById(CONFIG.LOG_SHEET_ID);
+  const ss = SpreadsheetApp.openById(経費設定.LOG_SHEET_ID);
   let sheet = ss.getSheetByName(name);
   if (!sheet) {
     sheet = ss.insertSheet(name);
@@ -1659,9 +1659,9 @@ function notifyMissing_(period, runLabel, missing) {
     &#x27;対象区間：&#x27; + period.label + &#x27;\n&#x27; +
     &#x27;未提出：&#x27; + missing.length + &#x27;件\n\n&#x27; +
     lines + &#x27;\n\n&#x27; +
-    &#x27;ログ：https://docs.google.com/spreadsheets/d/&#x27; + CONFIG.LOG_SHEET_ID;
+    &#x27;ログ：https://docs.google.com/spreadsheets/d/&#x27; + 経費設定.LOG_SHEET_ID;
 
-  MailApp.sendEmail(CONFIG.NOTIFY_EMAIL,
+  MailApp.sendEmail(経費設定.NOTIFY_EMAIL,
     &#x27;[経費] 領収書が未提出の出張が&#x27; + missing.length + &#x27;件あります（&#x27; + period.label + &#x27;）&#x27;,
     body);
 }
@@ -1675,11 +1675,11 @@ function notifyMissing_(period, runLabel, missing) {
  * 繰り返し回数の多い順に並びます。
  */
 function scanCalendarNaming() {
-  const cal = CalendarApp.getCalendarById(CONFIG.CALENDAR_ID);
-  if (!cal) throw new Error(&#x27;カレンダーが見つかりません：&#x27; + CONFIG.CALENDAR_ID);
+  const cal = CalendarApp.getCalendarById(経費設定.CALENDAR_ID);
+  if (!cal) throw new Error(&#x27;カレンダーが見つかりません：&#x27; + 経費設定.CALENDAR_ID);
 
   const to = new Date();
-  const from = new Date(to.getFullYear(), to.getMonth() - CLOSING_CONFIG.LOOKBACK_MONTHS, to.getDate());
+  const from = new Date(to.getFullYear(), to.getMonth() - 締め処理設定.LOOKBACK_MONTHS, to.getDate());
   const events = cal.getEvents(from, to);
 
   const counts = {};   // タイトル → { count, lastDate }
@@ -1697,12 +1697,12 @@ function scanCalendarNaming() {
     return [t, counts[t].count, counts[t].last];
   }).sort(function (a, b) { return b[1] - a[1]; });
 
-  const sheet = getOrCreateSheet_(CLOSING_CONFIG.NAMING_SHEET_NAME,
+  const sheet = getOrCreateSheet_(締め処理設定.NAMING_SHEET_NAME,
     [&#x27;予定タイトル&#x27;, &#x27;出現回数&#x27;, &#x27;最終出現日&#x27;, &#x27;対応（規則に合わせる／対象外にする）&#x27;]);
   sheet.getRange(2, 1, Math.max(sheet.getLastRow() - 1, 1), 4).clearContent();
   if (rows.length &gt; 0) sheet.getRange(2, 1, rows.length, 3).setValues(rows);
 
-  Logger.log(&#x27;命名規則に合わない予定：%s種類（過去%sヶ月）&#x27;, rows.length, CLOSING_CONFIG.LOOKBACK_MONTHS);
+  Logger.log(&#x27;命名規則に合わない予定：%s種類（過去%sヶ月）&#x27;, rows.length, 締め処理設定.LOOKBACK_MONTHS);
   return rows;
 }
 
@@ -1715,13 +1715,13 @@ function setupClosingTriggers() {
     if (t.getHandlerFunction() === &#x27;runClosingBatch&#x27;) ScriptApp.deleteTrigger(t);
   });
 
-  CLOSING_CONFIG.RUNS.forEach(function (r) {
+  締め処理設定.RUNS.forEach(function (r) {
     ScriptApp.newTrigger(&#x27;runClosingBatch&#x27;)
       .timeBased().onMonthDay(r.day).atHour(r.hour).create();
     Logger.log(&#x27;登録：毎月%s日 %s時台（%s）&#x27;, r.day, r.hour, r.label);
   });
 
-  Logger.log(&#x27;締め処理のトリガーを%s件登録しました&#x27;, CLOSING_CONFIG.RUNS.length);
+  Logger.log(&#x27;締め処理のトリガーを%s件登録しました&#x27;, 締め処理設定.RUNS.length);
 }
 
 
@@ -1746,7 +1746,7 @@ function testClosingPeriod_() {
 </pre>
       </details>
       <details class="src">
-        <summary><span class="fn">表記ゆれ辞書</span><span class="pill rec">推奨</span><span class="sz">267行 / 約10KB</span></summary>
+        <summary><span class="fn">表記ゆれ辞書</span><span class="pill rec">推奨</span><span class="sz">267行 / 約11KB</span></summary>
         <p class="srcdesc">表記ゆれの吸収・辞書の追記候補の洗い出し・出張かどうかの確認</p>
         <div class="srcbar"><span class="srcfile">03_経費自動化_表記ゆれ辞書.gs</span><button type="button" data-copy-src="src-dict">全文をコピー</button></div>
         <pre class="code srcpre" id="src-dict">/**
@@ -1759,15 +1759,15 @@ function testClosingPeriod_() {
  *  ・辞書に無い表記を自動で洗い出し、追記候補としてシートに出します
  *  ・出張かどうか判断できない予定は、本人に確認を送ります
  *
- * 依存：経費自動化_メイン.gs（CONFIG / getOrCreateSheet_ ほか）
+ * 依存：経費自動化_メイン.gs（経費設定 / getOrCreateSheet_ ほか）
  *
  * 設計：デジライズ ／ 実装・カスタマイズ：貴社
  * ------------------------------------------------------------------
  */
 
-// ========================= CONFIG（ここだけ編集） =========================
-const DICT_CONFIG = {
-  // 辞書シート名（CONFIG.LOG_SHEET_ID のブック内）
+// ========================= 経費設定（ここだけ編集） =========================
+const 表記辞書設定 = {
+  // 辞書シート名（経費設定.LOG_SHEET_ID のブック内）
   DICT_SHEET_NAME: &#x27;表記辞書&#x27;,
   CANDIDATE_SHEET_NAME: &#x27;辞書の追記候補&#x27;,
 
@@ -1813,7 +1813,7 @@ let DICT_CACHE_ = null;
 function loadDict_(force) {
   if (DICT_CACHE_ &amp;&amp; !force) return DICT_CACHE_;
 
-  const sheet = getOrCreateSheet_(DICT_CONFIG.DICT_SHEET_NAME, DICT_HEADERS);
+  const sheet = getOrCreateSheet_(表記辞書設定.DICT_SHEET_NAME, DICT_HEADERS);
   const values = sheet.getDataRange().getValues();
 
   const map = {};
@@ -1874,11 +1874,11 @@ function normalizeTerm_(person, kind, raw, dict) {
  * 出現回数の多い順にシートへ書き出すので、上から埋めていけば辞書が育ちます。
  */
 function suggestDictEntries() {
-  const cal = CalendarApp.getCalendarById(CONFIG.CALENDAR_ID);
-  if (!cal) throw new Error(&#x27;カレンダーが見つかりません：&#x27; + CONFIG.CALENDAR_ID);
+  const cal = CalendarApp.getCalendarById(経費設定.CALENDAR_ID);
+  if (!cal) throw new Error(&#x27;カレンダーが見つかりません：&#x27; + 経費設定.CALENDAR_ID);
 
   const to = new Date();
-  const from = new Date(to.getFullYear(), to.getMonth(), to.getDate() - DICT_CONFIG.CONFIRM_LOOKBACK_DAYS);
+  const from = new Date(to.getFullYear(), to.getMonth(), to.getDate() - 表記辞書設定.CONFIRM_LOOKBACK_DAYS);
   const events = cal.getEvents(from, to);
   const dict = loadDict_();
 
@@ -1901,12 +1901,12 @@ function suggestDictEntries() {
     .map(function (p) { return [&#x27;&#x27;, &#x27;地名&#x27;, p, &#x27;&#x27;, &#x27;出現&#x27; + counts[p] + &#x27;回&#x27;]; })
     .sort(function (a, b) { return counts[b[2]] - counts[a[2]]; });
 
-  const sheet = getOrCreateSheet_(DICT_CONFIG.CANDIDATE_SHEET_NAME, DICT_HEADERS);
+  const sheet = getOrCreateSheet_(表記辞書設定.CANDIDATE_SHEET_NAME, DICT_HEADERS);
   const last = sheet.getLastRow();
   if (last &gt; 1) sheet.getRange(2, 1, last - 1, DICT_HEADERS.length).clearContent();
   if (rows.length &gt; 0) sheet.getRange(2, 1, rows.length, DICT_HEADERS.length).setValues(rows);
 
-  Logger.log(&#x27;辞書に無い地名：%s種類。「%s」シートを確認してください&#x27;, rows.length, DICT_CONFIG.CANDIDATE_SHEET_NAME);
+  Logger.log(&#x27;辞書に無い地名：%s種類。「%s」シートを確認してください&#x27;, rows.length, 表記辞書設定.CANDIDATE_SHEET_NAME);
   return rows;
 }
 
@@ -1918,11 +1918,11 @@ function suggestDictEntries() {
  * 対象：命名規則に合わない予定のうち、終日でなく、場所または本文に地名らしき記載があるもの
  */
 function sendTripConfirmations() {
-  const cal = CalendarApp.getCalendarById(CONFIG.CALENDAR_ID);
-  if (!cal) throw new Error(&#x27;カレンダーが見つかりません：&#x27; + CONFIG.CALENDAR_ID);
+  const cal = CalendarApp.getCalendarById(経費設定.CALENDAR_ID);
+  if (!cal) throw new Error(&#x27;カレンダーが見つかりません：&#x27; + 経費設定.CALENDAR_ID);
 
   const to = new Date();
-  const from = new Date(to.getFullYear(), to.getMonth(), to.getDate() - DICT_CONFIG.CONFIRM_LOOKBACK_DAYS);
+  const from = new Date(to.getFullYear(), to.getMonth(), to.getDate() - 表記辞書設定.CONFIRM_LOOKBACK_DAYS);
   const events = cal.getEvents(from, to);
 
   const targets = [];
@@ -1967,11 +1967,11 @@ function sendTripConfirmations() {
 
 /** 通知の送信（メール／Google Chat を設定で切り替え） */
 function sendNotice_(subject, body) {
-  if (DICT_CONFIG.NOTIFY_METHOD === &#x27;chat&#x27;) {
+  if (表記辞書設定.NOTIFY_METHOD === &#x27;chat&#x27;) {
     const url = PropertiesService.getScriptProperties()
-      .getProperty(DICT_CONFIG.CHAT_WEBHOOK_PROPERTY);
+      .getProperty(表記辞書設定.CHAT_WEBHOOK_PROPERTY);
     if (!url) throw new Error(
-      &#x27;スクリプトプロパティ &#x27; + DICT_CONFIG.CHAT_WEBHOOK_PROPERTY + &#x27; にWebhook URLを設定してください&#x27;);
+      &#x27;スクリプトプロパティ &#x27; + 表記辞書設定.CHAT_WEBHOOK_PROPERTY + &#x27; にWebhook URLを設定してください&#x27;);
 
     UrlFetchApp.fetch(url, {
       method: &#x27;post&#x27;,
@@ -1981,7 +1981,7 @@ function sendNotice_(subject, body) {
     return;
   }
 
-  MailApp.sendEmail(CONFIG.NOTIFY_EMAIL, subject, body);
+  MailApp.sendEmail(経費設定.NOTIFY_EMAIL, subject, body);
 }
 
 
@@ -1992,7 +1992,7 @@ function sendNotice_(subject, body) {
  * 実行すると「表記辞書」シートに見本4件を追記し、変換結果をログに出します。
  */
 function testNormalize_() {
-  const sheet = getOrCreateSheet_(DICT_CONFIG.DICT_SHEET_NAME, DICT_HEADERS);
+  const sheet = getOrCreateSheet_(表記辞書設定.DICT_SHEET_NAME, DICT_HEADERS);
   if (sheet.getLastRow() &lt; 2) {
     sheet.getRange(2, 1, 4, DICT_HEADERS.length).setValues([
       [&#x27;&#x27;,        &#x27;地名&#x27;, &#x27;東京駅&#x27;,   &#x27;東京&#x27;, &#x27;共通ルール（担当者を空欄にすると全員に適用）&#x27;],
@@ -2000,7 +2000,7 @@ function testNormalize_() {
       [&#x27;&#x27;,        &#x27;地名&#x27;, &#x27;大分空港&#x27;, &#x27;大分&#x27;, &#x27;共通ルール&#x27;],
       [&#x27;山田 太郎&#x27;, &#x27;地名&#x27;, &#x27;本社&#x27;,    &#x27;東京&#x27;, &#x27;個人ルール（本人の書き方だけに適用）&#x27;],
     ]);
-    Logger.log(&#x27;「%s」シートに見本を4件入れました&#x27;, DICT_CONFIG.DICT_SHEET_NAME);
+    Logger.log(&#x27;「%s」シートに見本を4件入れました&#x27;, 表記辞書設定.DICT_SHEET_NAME);
   }
 
   const dict = loadDict_(true);   // 直前に見本を書き込んでいるため読み直す
@@ -2037,14 +2037,14 @@ function testNormalize_() {
  * ------------------------------------------------------------------
  */
 
-// ========================= CONFIG =========================
-const FARE_CONFIG = {
+// ========================= 経費設定 =========================
+const 区間料金設定 = {
   // ★TODO: 駅すぱあとAPIのアクセスキー（取得後にスクリプトプロパティへ登録）
   //   設定方法：プロジェクトの設定 → スクリプト プロパティ → EKISPERT_KEY を追加
   //   ※キーはコードに直書きしないこと
   API_ENDPOINT: &#x27;https://api.ekispert.jp/v1/json/search/course/extreme&#x27;,
 
-  // 区間マスタのシート名（メイン側 CONFIG.FARE_SHEET_NAME と合わせる）
+  // 区間マスタのシート名（メイン側 経費設定.FARE_SHEET_NAME と合わせる）
   FARE_SHEET_NAME: &#x27;区間マスタ&#x27;,
 
   // APIで取得した運賃をマスタへ自動追記するか
@@ -2119,7 +2119,7 @@ function getFare_(from, to) {
   // ---- ② 駅すぱあとAPIで検索 ----
   const api = fetchFareFromEkispert_(from, to);
   if (api.amount !== null) {
-    if (FARE_CONFIG.AUTO_APPEND_MASTER) {
+    if (区間料金設定.AUTO_APPEND_MASTER) {
       appendFareMaster_(from, to, api.amount, api.note);   // 次回以降はマスタで即答
     }
     return { amount: api.amount, source: &#x27;API&#x27;, note: api.note };
@@ -2131,8 +2131,8 @@ function getFare_(from, to) {
 
 /** ① 区間マスタから検索（往復・逆方向にも対応） */
 function lookupFareMaster_(from, to) {
-  const ss = SpreadsheetApp.openById(CONFIG.LOG_SHEET_ID);
-  const sh = ss.getSheetByName(FARE_CONFIG.FARE_SHEET_NAME);
+  const ss = SpreadsheetApp.openById(経費設定.LOG_SHEET_ID);
+  const sh = ss.getSheetByName(区間料金設定.FARE_SHEET_NAME);
   if (!sh || sh.getLastRow() &lt; 2) return null;
 
   const rows = sh.getRange(2, 1, sh.getLastRow() - 1, 4).getValues();  // 出発/到着/交通機関/片道金額
@@ -2160,10 +2160,10 @@ function fetchFareFromEkispert_(from, to) {
   if (!key) return { amount: null, note: &#x27;APIキー未設定（EKISPERT_KEY）&#x27; };
 
   try {
-    const url = FARE_CONFIG.API_ENDPOINT +
+    const url = 区間料金設定.API_ENDPOINT +
       &#x27;?key=&#x27; + encodeURIComponent(key) +
       &#x27;&amp;viaList=&#x27; + encodeURIComponent(from + &#x27;:&#x27; + to) +
-      &#x27;&amp;searchType=&#x27; + FARE_CONFIG.SEARCH_TYPE;
+      &#x27;&amp;searchType=&#x27; + 区間料金設定.SEARCH_TYPE;
 
     const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
     if (res.getResponseCode() !== 200) {
@@ -2219,10 +2219,10 @@ function pickTotalFare_(json) {
 /** 取得した運賃を区間マスタへ自動追記（次回以降はAPIを使わない） */
 function appendFareMaster_(from, to, amount, note) {
   try {
-    const ss = SpreadsheetApp.openById(CONFIG.LOG_SHEET_ID);
-    let sh = ss.getSheetByName(FARE_CONFIG.FARE_SHEET_NAME);
+    const ss = SpreadsheetApp.openById(経費設定.LOG_SHEET_ID);
+    let sh = ss.getSheetByName(区間料金設定.FARE_SHEET_NAME);
     if (!sh) {
-      sh = ss.insertSheet(FARE_CONFIG.FARE_SHEET_NAME);
+      sh = ss.insertSheet(区間料金設定.FARE_SHEET_NAME);
       sh.appendRow([&#x27;出発&#x27;, &#x27;到着&#x27;, &#x27;交通機関&#x27;, &#x27;片道金額&#x27;, &#x27;備考&#x27;, &#x27;登録日&#x27;]);
     }
     sh.appendRow([from, to, &#x27;鉄道&#x27;, amount, note || &#x27;API自動登録&#x27;,
@@ -2243,10 +2243,10 @@ function testFareApi_() {
   const key = PropertiesService.getScriptProperties().getProperty(&#x27;EKISPERT_KEY&#x27;);
   if (!key) { Logger.log(&#x27;先に EKISPERT_KEY を設定してください&#x27;); return; }
 
-  const url = FARE_CONFIG.API_ENDPOINT +
+  const url = 区間料金設定.API_ENDPOINT +
     &#x27;?key=&#x27; + encodeURIComponent(key) +
     &#x27;&amp;viaList=&#x27; + encodeURIComponent(&#x27;東京:大分&#x27;) +
-    &#x27;&amp;searchType=&#x27; + FARE_CONFIG.SEARCH_TYPE;
+    &#x27;&amp;searchType=&#x27; + 区間料金設定.SEARCH_TYPE;
 
   const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
   Logger.log(&#x27;HTTP: &#x27; + res.getResponseCode());
@@ -2292,8 +2292,8 @@ function testParseTitles_() {
  * ------------------------------------------------------------------
  */
 
-// ========================= CONFIG（ここだけ編集） =========================
-const MAIL_CONFIG = {
+// ========================= 経費設定（ここだけ編集） =========================
+const メール収集設定 = {
   // 保存先フォルダのID（共有ドライブ「領収書保管フォルダー」）
   // https://drive.google.com/drive/folders/1AbCdEfGhIjKlMnOpQrStUvWxYz01234
   FOLDER_IN: &#x27;1AbCdEfGhIjKlMnOpQrStUvWxYz01234&#x27;,
@@ -2327,15 +2327,15 @@ const MAIL_CONFIG = {
 
 /** ルートA：メールから領収書を収集して「領収書保管フォルダー」へ保存 */
 function collectReceiptsFromMail() {
-  const folder = DriveApp.getFolderById(MAIL_CONFIG.FOLDER_IN);
-  const label = getOrCreateLabel_(MAIL_CONFIG.PROCESSED_LABEL);
+  const folder = DriveApp.getFolderById(メール収集設定.FOLDER_IN);
+  const label = getOrCreateLabel_(メール収集設定.PROCESSED_LABEL);
 
   let saved = 0, noAttach = 0;
 
-  MAIL_CONFIG.SOURCES.forEach(function (src) {
+  メール収集設定.SOURCES.forEach(function (src) {
     const q = src.query +
-      &#x27; newer_than:&#x27; + MAIL_CONFIG.LOOKBACK_DAYS + &#x27;d&#x27; +
-      &#x27; -label:&#x27; + MAIL_CONFIG.PROCESSED_LABEL;
+      &#x27; newer_than:&#x27; + メール収集設定.LOOKBACK_DAYS + &#x27;d&#x27; +
+      &#x27; -label:&#x27; + メール収集設定.PROCESSED_LABEL;
     const threads = GmailApp.search(q, 0, 100);
 
     threads.forEach(function (thread) {
@@ -2414,7 +2414,7 @@ function inspectReceiptMails() {
         m.getFrom(), m.getSubject(), atts.length);
     });
   });
-  Logger.log(&#x27;※上記の送信元・件名をもとに MAIL_CONFIG.SOURCES を調整してください&#x27;);
+  Logger.log(&#x27;※上記の送信元・件名をもとに メール収集設定.SOURCES を調整してください&#x27;);
 }
 
 
@@ -2432,7 +2432,7 @@ function getOrCreateLabel_(name) {
 
 <!-- ============ STEP 4 ============ -->
 <section class="phase" id="p4">
-  <div class="phase-head"><span class="phase-num">STEP 4</span><h2>CONFIGを自社の環境に書き換える</h2></div>
+  <div class="phase-head"><span class="phase-num">STEP 4</span><h2>設定値を自社の環境に書き換える</h2></div>
   <p class="phase-note">
     <strong>環境ごとに決まっている値（フォルダID・シートID・通知先）を、自社のものに置き換えます。</strong>
     処理の中身を書き換える必要はありません。
@@ -2442,7 +2442,7 @@ function getOrCreateLabel_(name) {
     <div class="tick"><input type="checkbox" data-k="p4a" aria-label="完了"></div>
     <div class="body">
       <h3><span class="n">4-1</span>6項目を埋める</h3>
-      <p class="lead">「メイン」を開き、上から20行目あたりの <code class="inl">const CONFIG = {</code> の中を書き換えます。</p>
+      <p class="lead">「メイン」を開き、上から20行目あたりの <code class="inl">const 経費設定 = {</code> の中を書き換えます。</p>
       <div class="scroller">
         <table>
           <thead><tr><th>項目</th><th>入れるもの</th><th>準備の番号</th></tr></thead>
@@ -2457,18 +2457,18 @@ function getOrCreateLabel_(name) {
         </table>
       </div>
       <p>書き換え後はこのような形になります。</p>
-      <div class="srcbar" style="margin-top:10px"><span class="srcfile">CONFIG（メイン ファイルの先頭）</span><button type="button" data-copy-src="src-config">ひな形をコピー</button></div>
-      <pre class="code" id="src-config">const CONFIG = {
-  FOLDER_IN:    '1AbCdEfGhIjKlMnOpQrStUvWxYz01234',
-  FOLDER_DONE:  '（02_処理済みのID）',
-  FOLDER_ERROR: '（03_エラーのID）',
+      <div class="srcbar" style="margin-top:10px"><span class="srcfile">経費設定（メイン ファイルの先頭）</span><button type="button" data-copy-src="src-config">ひな形をコピー</button></div>
+      <pre class="code" id="src-config">const 経費設定 = {
+  FOLDER_IN:    &#x27;1AbCdEfGhIjKlMnOpQrStUvWxYz01234&#x27;,
+  FOLDER_DONE:  &#x27;（02_処理済みのID）&#x27;,
+  FOLDER_ERROR: &#x27;（03_エラーのID）&#x27;,
 
-  LOG_SHEET_ID: '（スプレッドシートのID）',
-  LOG_SHEET_NAME: '処理ログ',
-  FARE_SHEET_NAME: '区間マスタ',
+  LOG_SHEET_ID: &#x27;（スプレッドシートのID）&#x27;,
+  LOG_SHEET_NAME: &#x27;処理ログ&#x27;,
+  FARE_SHEET_NAME: &#x27;区間マスタ&#x27;,
 
-  CALENDAR_ID: 'primary',
-  NOTIFY_EMAIL: 'keiri@example.co.jp',
+  CALENDAR_ID: &#x27;primary&#x27;,
+  NOTIFY_EMAIL: &#x27;keiri@example.co.jp&#x27;,
 
   CLOSING_DAY: 20,
   ENABLE_MF: false,      // ← ここは false のまま
@@ -2495,7 +2495,7 @@ function getOrCreateLabel_(name) {
 <section class="phase" id="p5">
   <div class="phase-head"><span class="phase-num">STEP 5</span><h2>設定不要のテストを3つ動かす</h2></div>
   <p class="phase-note">
-    いきなり本処理を動かさず、<strong>単体で動く関数から</strong>確認します。ここが通れば、コードの貼り付けとCONFIGは正しく入っています。
+    いきなり本処理を動かさず、<strong>単体で動く関数から</strong>確認します。ここが通れば、コードの貼り付けと経費設定は正しく入っています。
   </p>
 
   <div class="step">
@@ -2755,7 +2755,7 @@ function getOrCreateLabel_(name) {
     <div class="tick"><input type="checkbox" data-k="p9b" aria-label="完了"></div>
     <div class="body">
       <h3><span class="n">9-2</span>ENABLE_MF を true にする</h3>
-      <p class="lead">「メイン」の CONFIG を <code class="inl">ENABLE_MF: true,</code> に変更して保存します。</p>
+      <p class="lead">「メイン」の 経費設定 を <code class="inl">ENABLE_MF: true,</code> に変更して保存します。</p>
       <p>次の実行から、マネーフォワードへ経費明細が登録されます。摘要にはメモ・区間・運賃がまとめて入ります。</p>
       <div class="expect">
         <span class="lbl">登録される摘要の形</span>
