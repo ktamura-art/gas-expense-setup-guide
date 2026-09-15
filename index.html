@@ -204,6 +204,25 @@
   .val button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
   .val button.copied{color:var(--ok);font-weight:600}
 
+  /* ---------- inner steps ---------- */
+  .inner{
+    margin:12px 0 0;border:1px solid var(--rule);background:var(--surface-2);
+    padding:12px 15px;
+  }
+  .inner .lbl{
+    font-family:var(--f-mono);font-size:10.5px;font-weight:600;
+    letter-spacing:.1em;text-transform:uppercase;color:var(--navy);
+    display:block;margin-bottom:8px;
+  }
+  .inner .where{
+    font-family:var(--f-mono);font-size:11px;color:var(--muted);
+    float:right;font-weight:400;letter-spacing:.03em;text-transform:none;
+  }
+  .inner ol{margin:0;padding-left:20px;font-size:13.5px;color:var(--ink-2);line-height:1.75}
+  .inner ol li{margin:3px 0}
+  .inner p.tail{margin:9px 0 0;font-size:13px;color:var(--ink-2);
+    border-top:1px solid var(--rule);padding-top:8px}
+
   /* ---------- expected output ---------- */
   .expect{
     margin:12px 0 0;border-left:3px solid var(--ok);
@@ -2507,6 +2526,16 @@ function getOrCreateLabel_(name) {
     <div class="body">
       <h3><span class="n">5-1</span>締め区間の計算を確認する</h3>
       <div class="path"><b>上部の関数リスト</b><i>→</i><b>testClosingPeriod</b><i>→</i><b>実行</b></div>
+      <div class="inner">
+        <span class="lbl"><span class="where">締め処理.gs</span>この関数が中でしていること</span>
+        <ol>
+          <li>見本の日付を7件、順に渡す</li>
+          <li>各日付について「21日を過ぎていれば当月20日で締める、20日以前なら前月20日で締める」を判定する</li>
+          <li>締め日の1か月前の21日を、区間の開始日として計算する</li>
+          <li>実行日と対象区間をログに書き出す</li>
+        </ol>
+        <p class="tail">シート・カレンダー・外部APIに<strong>一切触れません</strong>。日付の計算だけです。</p>
+      </div>
       <p>この関数は<strong>外部に一切アクセスしません</strong>。承認画面も出ず、すぐ結果が出ます。</p>
       <div class="expect">
         <span class="lbl">実行ログにこう出ればOK</span>
@@ -2528,6 +2557,17 @@ function getOrCreateLabel_(name) {
     <div class="body">
       <h3><span class="n">5-2</span>予定タイトルの解析を確認する</h3>
       <div class="path"><b>関数リスト</b><i>→</i><b>testParseTitles</b><i>→</i><b>実行</b></div>
+      <div class="inner">
+        <span class="lbl"><span class="where">区間料金と命名規則.gs</span>この関数が中でしていること</span>
+        <ol>
+          <li>見本の予定タイトルを7件、順に解析する</li>
+          <li><code class="inl">prefix///詳細</code> の形に分解する</li>
+          <li>prefix を定義表（move／meeting／gathering など13種）と照合し、種別と費用区分を決める</li>
+          <li>move のときは詳細を「出発地→到着地」に分ける</li>
+          <li>結果をログに書き出す</li>
+        </ol>
+        <p class="tail">カレンダーは読みません。<strong>文字列の解析だけ</strong>です。</p>
+      </div>
       <p>「区間料金と命名規則」を入れた場合のみ実行できます。<code class="inl">move///東京→大分</code> のような命名が正しく分解されるかを見ます。</p>
       <div class="expect">
         <span class="lbl">確認したいこと</span>
@@ -2541,6 +2581,17 @@ function getOrCreateLabel_(name) {
     <div class="body">
       <h3><span class="n">5-3</span>表記ゆれの変換を確認する</h3>
       <div class="path"><b>関数リスト</b><i>→</i><b>testNormalize</b><i>→</i><b>実行</b></div>
+      <div class="inner">
+        <span class="lbl"><span class="where">表記揺れ.gs</span>この関数が中でしていること</span>
+        <ol>
+          <li>「表記辞書」シートが空なら、見本を4件書き込む</li>
+          <li>辞書を読み込み、照合用のキーに変換する（全角半角・空白・カッコのゆれを吸収）</li>
+          <li>見本の5語を変換してみる</li>
+          <li>個人ルール → 共通ルール → そのまま返す、の順に引き当てる</li>
+          <li>結果をログに書き出す</li>
+        </ol>
+        <p class="tail"><strong>シートに書き込みます。</strong>ここで初めて承認画面が出ます。</p>
+      </div>
       <p class="lead">この関数は<strong>スプレッドシートに書き込みます</strong>。ここで初めて承認画面が出ます。</p>
       <div class="note crit">
         <span class="lbl">初回だけ、承認の画面が出ます</span>
@@ -2596,6 +2647,21 @@ function getOrCreateLabel_(name) {
     <div class="body">
       <h3><span class="n">6-2</span>main を実行する</h3>
       <div class="path"><b>関数リスト</b><i>→</i><b>main</b><i>→</i><b>実行</b></div>
+      <div class="inner">
+        <span class="lbl"><span class="where">main.gs</span>この関数が中でしていること</span>
+        <ol>
+          <li>投入フォルダのPDFを1件ずつ取り出す</li>
+          <li>Drive APIでOCRしてテキストにする（変換用の一時ファイルはすぐ削除）</li>
+          <li>発行元・利用日・金額を判定する（利用日は発行日ではなく搭乗日・乗車日）</li>
+          <li>利用日のカレンダー予定を探し、摘要を組み立てる</li>
+          <li>区間を取り出し、表記辞書で正式表記に揃える</li>
+          <li>区間マスタから運賃を引き当てる</li>
+          <li>費用区分を決めてファイル名を変更する</li>
+          <li>処理ログに1行追記し、PDFを処理済みフォルダの年月フォルダへ移す</li>
+          <li>要確認・エラーがあれば通知メールを送る</li>
+        </ol>
+        <p class="tail"><strong>ファイル名の変更とフォルダ移動が実際に起きます。</strong>1件で試してください。</p>
+      </div>
       <p>ドライブ・スプレッドシート・カレンダー・メールの権限を求められます。STEP 5-3 と同じ手順で許可してください。</p>
       <div class="expect">
         <span class="lbl">実行ログにこう出ればOK</span>
@@ -2649,6 +2715,16 @@ function getOrCreateLabel_(name) {
     <div class="body">
       <h3><span class="n">7-1</span>命名規則に合わない予定を洗い出す</h3>
       <div class="path"><b>関数リスト</b><i>→</i><b>scanCalendarNaming</b><i>→</i><b>実行</b></div>
+      <div class="inner">
+        <span class="lbl"><span class="where">締め処理.gs</span>この関数が中でしていること</span>
+        <ol>
+          <li>過去2か月のカレンダーを読む</li>
+          <li><code class="inl">prefix///</code> の形になっていない予定だけを拾う</li>
+          <li>タイトルごとに出現回数を数える</li>
+          <li>回数の多い順に「命名規則チェック」シートへ書き出す</li>
+        </ol>
+        <p class="tail">カレンダーは<strong>読み取りのみ</strong>。予定は変更しません。</p>
+      </div>
       <p>過去2ヶ月を走査し、<code class="inl">prefix///詳細</code> の形になっていない予定を<strong>出現回数の多い順</strong>にシートへ書き出します。</p>
       <div class="expect">
         <span class="lbl">「命名規則チェック」シートを開いてください</span>
@@ -2662,6 +2738,16 @@ function getOrCreateLabel_(name) {
     <div class="body">
       <h3><span class="n">7-2</span>辞書に無い地名を洗い出す</h3>
       <div class="path"><b>関数リスト</b><i>→</i><b>suggestDictEntries</b><i>→</i><b>実行</b></div>
+      <div class="inner">
+        <span class="lbl"><span class="where">表記揺れ.gs</span>この関数が中でしていること</span>
+        <ol>
+          <li>直近35日の <code class="inl">move</code> の予定を読む</li>
+          <li>出発地と到着地を取り出す</li>
+          <li>辞書に既にあるものを候補から外す</li>
+          <li>回数の多い順に「辞書の追記候補」シートへ書き出す</li>
+        </ol>
+        <p class="tail">カレンダーは読み取りのみ。書き込むのは候補シートだけです。</p>
+      </div>
       <p>直近35日の <code class="inl">move</code> の予定から、辞書に登録されていない地名を抽出します。</p>
       <div class="expect">
         <span class="lbl">「辞書の追記候補」シートを開いてください</span>
@@ -2685,6 +2771,19 @@ function getOrCreateLabel_(name) {
     <div class="body">
       <h3><span class="n">8-1</span>いちど手動で通す</h3>
       <div class="path"><b>関数リスト</b><i>→</i><b>runClosingBatch</b><i>→</i><b>実行</b></div>
+      <div class="inner">
+        <span class="lbl"><span class="where">締め処理.gs</span>この関数が中でしていること</span>
+        <ol>
+          <li>実行日から対象の締め区間を決める</li>
+          <li><strong>main() を呼ぶ</strong>（＝上の①〜⑨を、フォルダ内の全件ぶん）</li>
+          <li>締め区間のカレンダーから <code class="inl">move</code> の予定を集める</li>
+          <li>処理ログから、同じ期間に利用日が入っている領収書を集める</li>
+          <li>利用日をキーに突き合わせ、領収書が無い予定を洗い出す</li>
+          <li>「締め処理レポート」に1行追記する</li>
+          <li>未提出があれば通知メールを送る</li>
+        </ol>
+        <p class="tail">これが<strong>本番と同じ処理</strong>です。自動実行もこの関数を呼びます。</p>
+      </div>
       <p>これが本番と同じ処理です。領収書の処理 → カレンダーとの突合 → レポート出力 → 未提出の通知、までを一気に行います。</p>
       <div class="expect">
         <span class="lbl">実行ログにこう出ればOK</span>
@@ -2701,6 +2800,15 @@ function getOrCreateLabel_(name) {
     <div class="body">
       <h3><span class="n">8-2</span>トリガーを登録する</h3>
       <div class="path"><b>関数リスト</b><i>→</i><b>setupClosingTriggers</b><i>→</i><b>実行</b></div>
+      <div class="inner">
+        <span class="lbl"><span class="where">締め処理.gs</span>この関数が中でしていること</span>
+        <ol>
+          <li>既にある runClosingBatch のトリガーをすべて削除する</li>
+          <li>設定の3件（21日1時台・翌月1日8時台・翌月8日8時台）を登録する</li>
+          <li>登録結果をログに書き出す</li>
+        </ol>
+        <p class="tail"><strong>何度実行しても増えません。</strong>削除してから作り直すためです。</p>
+      </div>
       <p>この関数を1回実行するだけで、3本のトリガーが登録されます。画面から1本ずつ作る必要はありません。</p>
       <div class="scroller">
         <table>
