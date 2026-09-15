@@ -1731,7 +1731,7 @@ function setupClosingTriggers() {
  * 【APIキー不要・すぐ動きます】締め区間の計算が正しいかを確認する
  * 実行後、ログに「実行日 → 対象区間」の一覧が出ます。
  */
-function testClosingPeriod_() {
+function testClosingPeriod() {
   const samples = [
     &#x27;2026-08-20&#x27;, &#x27;2026-08-21&#x27;, &#x27;2026-08-31&#x27;,
     &#x27;2026-09-01&#x27;, &#x27;2026-09-08&#x27;, &#x27;2026-09-20&#x27;, &#x27;2026-09-21&#x27;,
@@ -1991,7 +1991,7 @@ function sendNotice_(subject, body) {
  * 【すぐ動きます】辞書に見本を入れて、引き当てを確認する
  * 実行すると「表記辞書」シートに見本4件を追記し、変換結果をログに出します。
  */
-function testNormalize_() {
+function testNormalize() {
   const sheet = getOrCreateSheet_(表記辞書設定.DICT_SHEET_NAME, DICT_HEADERS);
   if (sheet.getLastRow() &lt; 2) {
     sheet.getRange(2, 1, 4, DICT_HEADERS.length).setValues([
@@ -2152,7 +2152,7 @@ function lookupFareMaster_(from, to) {
 
 /**
  * ② 駅すぱあとAPIから運賃を取得
- * ★初回は testFareApi_() を実行し、実レスポンスの構造を確認してください。
+ * ★初回は testFareApi() を実行し、実レスポンスの構造を確認してください。
  *   （レスポンスの項目名は契約プランにより異なる場合があります）
  */
 function fetchFareFromEkispert_(from, to) {
@@ -2239,7 +2239,7 @@ function appendFareMaster_(from, to, amount, note) {
  * ★最初に実行してください：APIの実レスポンスを確認する
  * ログに生の応答が出るので、運賃の項目名を確認できます。
  */
-function testFareApi_() {
+function testFareApi() {
   const key = PropertiesService.getScriptProperties().getProperty(&#x27;EKISPERT_KEY&#x27;);
   if (!key) { Logger.log(&#x27;先に EKISPERT_KEY を設定してください&#x27;); return; }
 
@@ -2255,7 +2255,7 @@ function testFareApi_() {
 }
 
 /** 命名規則の解析テスト（APIキー不要・すぐ動きます） */
-function testParseTitles_() {
+function testParseTitles() {
   const samples = [
     &#x27;move///東京→大分&#x27;,
     &#x27;move///福岡 → 東京(羽田)&#x27;,
@@ -2502,7 +2502,7 @@ function getOrCreateLabel_(name) {
     <div class="tick"><input type="checkbox" data-k="p5a" aria-label="完了"></div>
     <div class="body">
       <h3><span class="n">5-1</span>締め区間の計算を確認する</h3>
-      <div class="path"><b>上部の関数リスト</b><i>→</i><b>testClosingPeriod_</b><i>→</i><b>実行</b></div>
+      <div class="path"><b>上部の関数リスト</b><i>→</i><b>testClosingPeriod</b><i>→</i><b>実行</b></div>
       <p>この関数は<strong>外部に一切アクセスしません</strong>。承認画面も出ず、すぐ結果が出ます。</p>
       <div class="expect">
         <span class="lbl">実行ログにこう出ればOK</span>
@@ -2523,7 +2523,7 @@ function getOrCreateLabel_(name) {
     <div class="tick"><input type="checkbox" data-k="p5b" aria-label="完了"></div>
     <div class="body">
       <h3><span class="n">5-2</span>予定タイトルの解析を確認する</h3>
-      <div class="path"><b>関数リスト</b><i>→</i><b>testParseTitles_</b><i>→</i><b>実行</b></div>
+      <div class="path"><b>関数リスト</b><i>→</i><b>testParseTitles</b><i>→</i><b>実行</b></div>
       <p>「区間料金と命名規則」を入れた場合のみ実行できます。<code class="inl">move///東京→大分</code> のような命名が正しく分解されるかを見ます。</p>
       <div class="expect">
         <span class="lbl">確認したいこと</span>
@@ -2536,7 +2536,7 @@ function getOrCreateLabel_(name) {
     <div class="tick"><input type="checkbox" data-k="p5c" aria-label="完了"></div>
     <div class="body">
       <h3><span class="n">5-3</span>表記ゆれの変換を確認する</h3>
-      <div class="path"><b>関数リスト</b><i>→</i><b>testNormalize_</b><i>→</i><b>実行</b></div>
+      <div class="path"><b>関数リスト</b><i>→</i><b>testNormalize</b><i>→</i><b>実行</b></div>
       <p class="lead">この関数は<strong>スプレッドシートに書き込みます</strong>。ここで初めて承認画面が出ます。</p>
       <div class="note crit">
         <span class="lbl">初回だけ、承認の画面が出ます</span>
@@ -2805,9 +2805,9 @@ function getOrCreateLabel_(name) {
     <table>
       <thead><tr><th>関数名</th><th>すること</th><th>いつ使うか</th></tr></thead>
       <tbody>
-        <tr><td class="m">testClosingPeriod_</td><td>締め区間の計算を表示</td><td>設定確認（外部アクセスなし）</td></tr>
-        <tr><td class="m">testParseTitles_</td><td>予定タイトルの解析を表示</td><td>設定確認</td></tr>
-        <tr><td class="m">testNormalize_</td><td>表記ゆれの変換を表示</td><td>設定確認</td></tr>
+        <tr><td class="m">testClosingPeriod</td><td>締め区間の計算を表示</td><td>設定確認（外部アクセスなし）</td></tr>
+        <tr><td class="m">testParseTitles</td><td>予定タイトルの解析を表示</td><td>設定確認</td></tr>
+        <tr><td class="m">testNormalize</td><td>表記ゆれの変換を表示</td><td>設定確認</td></tr>
         <tr><td class="m">main</td><td>領収書の判定・突合・リネーム</td><td>随時（手動）</td></tr>
         <tr><td class="m">runClosingBatch</td><td>締め処理の一式</td><td>本番（自動実行される）</td></tr>
         <tr><td class="m">setupClosingTriggers</td><td>月3回のトリガーを登録</td><td>初回1回だけ</td></tr>
@@ -2815,7 +2815,7 @@ function getOrCreateLabel_(name) {
         <tr><td class="m">suggestDictEntries</td><td>辞書に無い地名を洗い出し</td><td>月1回程度</td></tr>
         <tr><td class="m">sendTripConfirmations</td><td>出張かどうかの確認を送信</td><td>運用が固まってから</td></tr>
         <tr><td class="m">inspectReceiptMails</td><td>領収書メールの送信元を調査</td><td>Flows設定の前に</td></tr>
-        <tr><td class="m">testFareApi_</td><td>駅すぱあとAPIの応答確認</td><td>運賃自動取得を使う場合</td></tr>
+        <tr><td class="m">testFareApi</td><td>駅すぱあとAPIの応答確認</td><td>運賃自動取得を使う場合</td></tr>
       </tbody>
     </table>
   </div>
@@ -2825,7 +2825,8 @@ function getOrCreateLabel_(name) {
     <table>
       <thead><tr><th>エラー・症状</th><th>原因</th><th>対応</th></tr></thead>
       <tbody>
-        <tr><td class="m">Drive is not defined</td><td>マニフェストの差し替え漏れ</td><td>STEP 2 をやり直す</td></tr>
+        <tr><td>関数リストに出てこない</td><td>関数名の末尾に <code>_</code> が付いている。Apps Script では非公開扱いになり、実行メニューに出ません</td><td>末尾の <code>_</code> を外す。内部でだけ呼ぶ関数は付けたままで構いません</td></tr>
+              <tr><td class="m">Drive is not defined</td><td>マニフェストの差し替え漏れ</td><td>STEP 2 をやり直す</td></tr>
         <tr><td class="m">〜 is not defined</td><td>ファイルの貼り忘れ、または名前の重複</td><td>5ファイルすべて入っているか確認</td></tr>
         <tr><td>カレンダーが見つかりません</td><td>CALENDAR_IDの誤り、または共有されていない</td><td>IDを確認し、カレンダーを共有する</td></tr>
         <tr><td>「要確認」が多い</td><td>予定が命名規則に合っていない</td><td><code class="inl">scanCalendarNaming</code> で規則外を洗い出す</td></tr>
