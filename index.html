@@ -690,8 +690,8 @@
     <div class="body">
       <h3><span class="n">0-2</span>フォルダIDを控える</h3>
       <p class="lead">フォルダを開いたときのURLの、<strong><code class="inl">/folders/</code> より後ろ</strong>がIDです。</p>
-      <div class="val"><code>https://drive.google.com/drive/folders/1AbCdEfGhIjKlMnOpQrStUvWxYz01234
-                                       └──────── ここがID ────────┘</code><button type="button" data-copy="1AbCdEfGhIjKlMnOpQrStUvWxYz01234">コピー</button></div>
+      <div class="val"><code>https://drive.google.com/drive/folders/（ここに表示される文字列がID）
+                                       └──────── ここがID ────────┘</code><button type="button" data-copy="（ここに表示される文字列がID）">コピー</button></div>
       <p>3つ（または4つ）ぶん、同じ要領で控えてください。上の例は「領収書保管フォルダー」の実際のIDです。</p>
     </div>
   </div>
@@ -910,7 +910,7 @@ const 経費設定 = {
   CALENDAR_ID: &#x27;primary&#x27;,
 
   // ★TODO: エラー・要確認の通知先
-  NOTIFY_EMAIL: &#x27;keiri@example.co.jp&#x27;,
+  NOTIFY_EMAIL: &#x27;★通知先メールアドレスに置き換える★&#x27;,
 
   // 対象期間（締め日基準）：前月21日〜当月20日
   CLOSING_DAY: 20,
@@ -2295,8 +2295,8 @@ function testParseTitles() {
 // ========================= 経費設定（ここだけ編集） =========================
 const メール収集設定 = {
   // 保存先フォルダのID（共有ドライブ「領収書保管フォルダー」）
-  // https://drive.google.com/drive/folders/1AbCdEfGhIjKlMnOpQrStUvWxYz01234
-  FOLDER_IN: &#x27;1AbCdEfGhIjKlMnOpQrStUvWxYz01234&#x27;,
+  // 共有ドライブで該当フォルダを開き、URLの /folders/ 以降を貼る
+  FOLDER_IN: &#x27;★領収書保管フォルダーのIDに置き換える★&#x27;,
 
   // 何日前までのメールを対象にするか（毎月実行なら 35 程度が安全）
   LOOKBACK_DAYS: 35,
@@ -2459,7 +2459,7 @@ function getOrCreateLabel_(name) {
       <p>書き換え後はこのような形になります。</p>
       <div class="srcbar" style="margin-top:10px"><span class="srcfile">経費設定（メイン ファイルの先頭）</span><button type="button" data-copy-src="src-config">ひな形をコピー</button></div>
       <pre class="code" id="src-config">const 経費設定 = {
-  FOLDER_IN:    &#x27;1AbCdEfGhIjKlMnOpQrStUvWxYz01234&#x27;,
+  FOLDER_IN:    &#x27;★領収書保管フォルダーのIDに置き換える★&#x27;,
   FOLDER_DONE:  &#x27;（02_処理済みのID）&#x27;,
   FOLDER_ERROR: &#x27;（03_エラーのID）&#x27;,
 
@@ -2468,11 +2468,15 @@ function getOrCreateLabel_(name) {
   FARE_SHEET_NAME: &#x27;区間マスタ&#x27;,
 
   CALENDAR_ID: &#x27;primary&#x27;,
-  NOTIFY_EMAIL: &#x27;keiri@example.co.jp&#x27;,
+  NOTIFY_EMAIL: &#x27;★通知先メールアドレスに置き換える★&#x27;,
 
   CLOSING_DAY: 20,
   ENABLE_MF: false,      // ← ここは false のまま
 };</pre>
+      <div class="note crit">
+        <span class="lbl">★ の箇所は必ず置き換えてください</span>
+        <p>このページは<strong>公開サンプル版</strong>のため、ID・メールアドレスは実在しない値です。<strong>そのまま貼ると動きません。</strong>★で囲まれた箇所を、準備で控えたご自身の値に置き換えてください。</p>
+      </div>
       <div class="note crit">
         <span class="lbl">ENABLE_MF は false のままにしてください</span>
         <p><code class="inl">true</code> にすると、テスト中の領収書がマネーフォワードへ登録されてしまいます。判定結果をひととおり確認したあと、STEP 9 で切り替えます。</p>
